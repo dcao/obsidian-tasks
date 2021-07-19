@@ -25,19 +25,24 @@ export class Task {
      */
     public readonly originalStatusCharacter: string;
     public readonly precedingHeader: string | null;
-    public readonly dueDate: Moment | null;
+    public readonly dueStart: Moment | null;
+    public readonly dueStop: Moment | null;
     public readonly doneDate: Moment | null;
     public readonly recurrenceRule: RRule | null;
     /** The blockLink is a "^" annotation after the dates/recurrence rules. */
     public readonly blockLink: string;
 
+    public static readonly timeFormat = 'hh:mm';
     public static readonly dateFormat = 'YYYY-MM-DD';
+    public static readonly dateTimeFormat = 'YYYY-MM-DDThh:mm';
+
     public static readonly taskRegex = /^([\s\t]*)[-*] +\[(.)\] *(.*)/u;
     // The following regexes end with `$` because they will be matched and
     // removed from the end until none are left.
-    public static readonly dueDateRegex = /[📅📆🗓] ?(\d{4}-\d{2}-\d{2})$/u;
+    // public static readonly dueDateRegex = /!(\d{4}-\d{2}-\d{2})$/u;
+    public static readonly dueDateRegex = /!(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?)(--((\d{4}-\d{2}-\d{2})|(\d{2}:\d{2})|(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})))?$/u;
     public static readonly doneDateRegex = /✅ ?(\d{4}-\d{2}-\d{2})$/u;
-    public static readonly recurrenceRegex = /🔁([a-zA-Z0-9, !]+)$/u;
+    public static readonly recurrenceRegex = /\+([a-zA-Z0-9, !]+)$/u;
     public static readonly blockLinkRegex = / \^[a-zA-Z0-9-]+$/u;
 
     constructor({
@@ -49,7 +54,8 @@ export class Task {
         sectionIndex,
         originalStatusCharacter,
         precedingHeader,
-        dueDate,
+        dueStart,
+        dueStop,
         doneDate,
         recurrenceRule,
         blockLink,
@@ -62,7 +68,8 @@ export class Task {
         sectionIndex: number;
         originalStatusCharacter: string;
         precedingHeader: string | null;
-        dueDate: moment.Moment | null;
+        dueStart: moment.Moment | null;
+        dueStop: moment.Moment | null;
         doneDate: moment.Moment | null;
         recurrenceRule: RRule | null;
         blockLink: string;
@@ -75,7 +82,8 @@ export class Task {
         this.sectionIndex = sectionIndex;
         this.originalStatusCharacter = originalStatusCharacter;
         this.precedingHeader = precedingHeader;
-        this.dueDate = dueDate;
+        this.dueStart = dueStart;
+        this.dueStop = dueStop;
         this.doneDate = doneDate;
         this.recurrenceRule = recurrenceRule;
         this.blockLink = blockLink;
@@ -132,7 +140,8 @@ export class Task {
         // description in any order. The loop should only run once if the
         // strings are in the expected order after the description.
         let matched: boolean;
-        let dueDate: Moment | null = null;
+        let dueStart: Moment | null = null;
+        let dueStop: Moment | null = null;
         let doneDate: Moment | null = null;
         let recurrenceRule: RRule | null = null;
         // Add a "max runs" failsafe to never end in an endless loop:
@@ -151,7 +160,34 @@ export class Task {
 
             const dueDateMatch = description.match(Task.dueDateRegex);
             if (dueDateMatch !== null) {
-                dueDate = window.moment(dueDateMatch[1], Task.dateFormat);
+                // due date start
+                if (dueDateMatch[2]) {
+                    dueStart = window.moment(dueDateMatch[1], Task.dateTimeFormat);
+                } else {
+                    dueStart = window.moment(dueDateMatch[1], Task.dateFormat);
+                }
+
+                // due date stop
+                if (dueDateMatch[3]) {
+                    // we have an end due date!
+                    // there are three cases:
+                    if (dueDateMatch[5]) {
+                        // just date
+                        dueStop = window.moment(dueDateMatch[5], Task.dateFormat);
+                    } else if (dueDateMatch[6]) {
+                        // just time
+                        dueStop = window.moment(dueDateMatch[6], Task.timeFormat);
+                        dueStop.set({
+                            year: dueStart.get('year'),
+                            month: dueStart.get('month'),
+                            date: dueStart.get('date')
+                        });
+                    } else {
+                        // both date and time
+                        dueStop = window.moment(dueDateMatch[7], Task.dateTimeFormat);
+                    }
+                }
+
                 description = description.replace(Task.dueDateRegex, '').trim();
                 matched = true;
             }
@@ -182,7 +218,8 @@ export class Task {
             sectionIndex,
             originalStatusCharacter: statusString,
             precedingHeader,
-            dueDate,
+            dueStart,
+            dueStop,
             doneDate,
             recurrenceRule,
             blockLink,
@@ -264,17 +301,26 @@ export class Task {
     }
 
     public toString(): string {
-        const recurrenceRule: string = this.recurrenceRule
-            ? ` 🔁 ${this.recurrenceRule.toText()}`
+        const dueStart: string = this.dueStart
+            ? this.dueStart.get('hour') === 0 && this.dueStart.get('minute') === 0
+                ? ` !${this.dueStart.format(Task.dateFormat)}`
+                : ` !${this.dueStart.format(Task.dateTimeFormat)}`
             : '';
-        const dueDate: string = this.dueDate
-            ? ` 📅 ${this.dueDate.format(Task.dateFormat)}`
+        const dueStop: string = this.dueStart && this.dueStop
+            ? this.dueStart.format(Task.dateTimeFormat) === this.dueStop.format(Task.dateTimeFormat)
+                ? `-${this.dueStop.format(Task.timeFormat)}`
+                : this.dueStop.get('hour') === 0 && this.dueStop.get('minute') === 0
+                    ? `--${this.dueStop.format(Task.dateFormat)}`
+                    : `--${this.dueStop.format(Task.dateTimeFormat)}`
+            : '';
+        const recurrenceRule: string = this.recurrenceRule
+            ? ` +${this.recurrenceRule.toText()}`
             : '';
         const doneDate: string = this.doneDate
             ? ` ✅ ${this.doneDate.format(Task.dateFormat)}`
             : '';
 
-        return `${this.description}${recurrenceRule}${dueDate}${doneDate}${this.blockLink}`;
+        return `${this.description}${dueStart}${dueStop}${recurrenceRule}${doneDate}${this.blockLink}`;
     }
 
     public toFileLineString(): string {
@@ -295,7 +341,8 @@ export class Task {
         const newStatus: Status =
             this.status === Status.Todo ? Status.Done : Status.Todo;
         let newDoneDate = null;
-        let nextOccurrence: Moment | undefined;
+        let nextStart: Moment | undefined;
+        let nextStop: Moment | null | undefined = null;
         if (newStatus !== Status.Todo) {
             newDoneDate = window.moment();
 
@@ -303,27 +350,37 @@ export class Task {
             if (this.recurrenceRule !== null) {
                 // If no due date, next occurrence is after "today".
                 const dtStart: Moment =
-                    this.dueDate !== null ? this.dueDate : window.moment();
+                    this.dueStart !== null ? this.dueStart.clone() : window.moment().startOf('day');
+
                 // RRule disregards the timezone:
-                dtStart.endOf('day').utc(true);
+                // dtStart.utc(true);
 
                 // Create a new rrule with `dtstart` set so that the date of
                 // the new occurrence is calculated based on the original due
                 // date and not based on today.
                 const rrule = new RRule({
                     ...this.recurrenceRule.options,
+                    byhour: null,
+                    byminute: null,
+                    bysecond: null,
                     dtstart: dtStart.toDate(),
                 });
 
-                // The next occurrence should happen after today or the due
-                // date, whatever is later.
-                const today = window.moment().endOf('day').utc(true);
+                // The next occurrence should happen after today (with the same time
+                // as the start time) or the due date, whatever is later.
+                const today = window.moment().utc(true);
+                today.set({
+                    hour: dtStart.get("hour"),
+                    minute: dtStart.get("minute"),
+                });
                 const after = today.isAfter(dtStart) ? today : dtStart;
                 const next = rrule.after(after.toDate(), false);
 
                 if (next !== null) {
                     // Re-add the timezone that RRule disregarded:
-                    nextOccurrence = window.moment.utc(next);
+                    nextStart = window.moment(next);
+                    nextStop = this.dueStop?.clone();
+                    nextStop?.add(nextStart.diff(this.dueStart));
                 }
             }
         }
@@ -337,10 +394,11 @@ export class Task {
 
         const newTasks: Task[] = [];
 
-        if (nextOccurrence !== undefined) {
+        if (nextStart !== undefined) {
             const nextTask = new Task({
                 ...this,
-                dueDate: nextOccurrence,
+                dueStart: nextStart,
+                dueStop: nextStop,
                 // New occurrences cannot have the same block link.
                 // And random block links don't help.
                 blockLink: '',

@@ -16,14 +16,14 @@ export class Sort {
     }
 
     private static compareByDate(a: Task, b: Task): -1 | 0 | 1 {
-        if (a.dueDate !== null && b.dueDate === null) {
+        if (a.dueStart !== null && b.dueStart === null) {
             return -1;
-        } else if (a.dueDate === null && b.dueDate !== null) {
+        } else if (a.dueStart === null && b.dueStart !== null) {
             return 1;
-        } else if (a.dueDate !== null && b.dueDate !== null) {
-            if (a.dueDate.isAfter(b.dueDate)) {
+        } else if (a.dueStart !== null && b.dueStart !== null) {
+            if (a.dueStart.isAfter(b.dueStart)) {
                 return 1;
-            } else if (a.dueDate.isBefore(b.dueDate)) {
+            } else if (a.dueStart.isBefore(b.dueStart)) {
                 return -1;
             } else {
                 return Sort.compareByPath(a, b);

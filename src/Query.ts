@@ -41,7 +41,7 @@ export class Query {
                         this._filters.push((task) => task.indentation === '');
                         break;
                     case line === this.noDueString:
-                        this._filters.push((task) => task.dueDate === null);
+                        this._filters.push((task) => task.dueStart === null);
                         break;
                     case this.dueRegexp.test(line):
                         this.parseDueFilter({ line });
@@ -62,7 +62,7 @@ export class Query {
                         this.parseLimit({ line });
                         break;
                     default:
-                        this._error = 'do not understand query';
+                        this._error = 'invalid query clause';
                 }
             });
     }
@@ -84,24 +84,38 @@ export class Query {
         if (dueMatch !== null) {
             const filterDate = this.parseDate(dueMatch[2]);
             if (!filterDate.isValid()) {
-                this._error = 'do not understand due date';
+                this._error = 'invalid due date in query';
             }
 
             let filter;
             if (dueMatch[1] === 'before') {
                 filter = (task: Task) =>
-                    task.dueDate ? task.dueDate.isBefore(filterDate) : false;
+                    task.dueStart ? task.dueStart.isBefore(filterDate) : false;
             } else if (dueMatch[1] === 'after') {
+                // For after queries, if the filter date's hour and min are 0,
+                // check for after the end of day by setting filter date to end of day.
+                const zeroHm = filterDate.get("hour") === 0 && filterDate.get("minute") === 0;
+                if (zeroHm) {
+                    filterDate.endOf('day');
+                }
                 filter = (task: Task) =>
-                    task.dueDate ? task.dueDate.isAfter(filterDate) : false;
+                    task.dueStart ? task.dueStart.isAfter(filterDate) : false;
             } else {
-                filter = (task: Task) =>
-                    task.dueDate ? task.dueDate.isSame(filterDate) : false;
+                // For same queries, if the filter date's hour and min are 0,
+                // check for if it's same day, not exactly the same.
+                const zeroHm = filterDate.get("hour") === 0 && filterDate.get("minute") === 0;
+                if (zeroHm) {
+                    filter = (task: Task) =>
+                        task.dueStart ? task.dueStart.isSame(filterDate, 'day') : false;
+                } else {
+                    filter = (task: Task) =>
+                        task.dueStart ? task.dueStart.isSame(filterDate) : false;
+                }
             }
 
             this._filters.push(filter);
         } else {
-            this._error = 'do not understand query filter (due date)';
+            this._error = 'invalid due date in query';
         }
     }
 
@@ -110,7 +124,7 @@ export class Query {
         if (doneMatch !== null) {
             const filterDate = this.parseDate(doneMatch[2]);
             if (!filterDate.isValid()) {
-                this._error = 'do not understand done date';
+                this._error = 'invalid done date in query';
             }
 
             let filter;
@@ -142,10 +156,10 @@ export class Query {
                     (task: Task) => !task.path.includes(pathMatch[2]),
                 );
             } else {
-                this._error = 'do not understand query filter (path)';
+                this._error = 'invalid path in query';
             }
         } else {
-            this._error = 'do not understand query filter (path)';
+            this._error = 'invalid path in query';
         }
     }
 
@@ -169,10 +183,10 @@ export class Query {
                         ),
                 );
             } else {
-                this._error = 'do not understand query filter (description)';
+                this._error = 'invalid description in query';
             }
         } else {
-            this._error = 'do not understand query filter (description)';
+            this._error = 'invalid description in query';
         }
     }
 
@@ -199,10 +213,10 @@ export class Query {
                         ),
                 );
             } else {
-                this._error = 'do not understand query filter (heading)';
+                this._error = 'invalid heading clause in query';
             }
         } else {
-            this._error = 'do not understand query filter (heading)';
+            this._error = 'invalid heading clause in query';
         }
     }
 
@@ -213,13 +227,21 @@ export class Query {
             const limit = Number.parseInt(limitMatch[2], 10);
             this._limit = limit;
         } else {
-            this._error = 'do not understand query limit';
+            this._error = 'invalid limit clause in query';
         }
     }
 
     private parseDate(input: string): moment.Moment {
         // Using start of date to correctly match on comparison with other dates (like equality).
-        return window.moment(chrono.parseDate(input)).startOf('day');
+        const parsed = chrono.parse(input)[0];
+        const res = window.moment(parsed.date());
+        if (!parsed.start.isCertain("hour") || !parsed.start.isCertain("minute")) {
+            res.set({
+                hour: 0,
+                minute: 0,
+            });
+        }
+        return res;
     }
 
     private stringIncludesCaseInsensitive(

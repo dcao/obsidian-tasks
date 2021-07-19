@@ -1,30 +1,8 @@
-import { createOrEdit } from './CreateOrEdit';
-
 import { toggleDone } from './ToggleDone';
-import type { App, Editor, Plugin, View } from 'obsidian';
+import type { Plugin } from 'obsidian';
 
 export class Commands {
-    private readonly plugin: Plugin;
-
-    private get app(): App {
-        return this.plugin.app;
-    }
-
     constructor({ plugin }: { plugin: Plugin }) {
-        this.plugin = plugin;
-
-        plugin.addCommand({
-            id: 'edit-task',
-            name: 'Create or edit task',
-            editorCheckCallback: (
-                checking: boolean,
-                editor: Editor,
-                view: View,
-            ) => {
-                return createOrEdit(checking, editor, view, this.app);
-            },
-        });
-
         plugin.addCommand({
             id: 'toggle-done',
             name: 'Toggle task done',
