@@ -32,9 +32,9 @@ export class Task {
     /** The blockLink is a "^" annotation after the dates/recurrence rules. */
     public readonly blockLink: string;
 
-    public static readonly timeFormat = 'hh:mm';
+    public static readonly timeFormat = 'HH:mm';
     public static readonly dateFormat = 'YYYY-MM-DD';
-    public static readonly dateTimeFormat = 'YYYY-MM-DDThh:mm';
+    public static readonly dateTimeFormat = 'YYYY-MM-DDTHH:mm';
 
     public static readonly taskRegex = /^([\s\t]*)[-*] +\[(.)\] *(.*)/u;
     // The following regexes end with `$` because they will be matched and
@@ -307,8 +307,8 @@ export class Task {
                 : ` !${this.dueStart.format(Task.dateTimeFormat)}`
             : '';
         const dueStop: string = this.dueStart && this.dueStop
-            ? this.dueStart.format(Task.dateTimeFormat) === this.dueStop.format(Task.dateTimeFormat)
-                ? `-${this.dueStop.format(Task.timeFormat)}`
+            ? this.dueStart.format(Task.dateFormat) === this.dueStop.format(Task.dateFormat)
+                ? `--${this.dueStop.format(Task.timeFormat)}`
                 : this.dueStop.get('hour') === 0 && this.dueStop.get('minute') === 0
                     ? `--${this.dueStop.format(Task.dateFormat)}`
                     : `--${this.dueStop.format(Task.dateTimeFormat)}`
