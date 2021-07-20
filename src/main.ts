@@ -9,8 +9,11 @@ import { QueryRenderer } from './QueryRenderer';
 import { getSettings, updateSettings } from './Settings';
 import { SettingsTab } from './SettingsTab';
 
+import { VIEW_TYPE_AGENDA, AgendaView } from 'AgendaView';
+
 export default class TasksPlugin extends Plugin {
     private cache: Cache | undefined;
+    private agendaView: AgendaView | undefined;
 
     async onload() {
         console.log('loading plugin "tasks"');
@@ -29,14 +32,20 @@ export default class TasksPlugin extends Plugin {
             vault: this.app.vault,
             events,
         });
+
         new InlineRenderer({ plugin: this });
         new QueryRenderer({ plugin: this, events });
         new Commands({ plugin: this });
+
+        this.registerView(VIEW_TYPE_AGENDA, (leaf) => (this.agendaView = new AgendaView(leaf, events)));
     }
 
     onunload() {
         console.log('unloading plugin "tasks"');
         this.cache?.unload();
+        this.app.workspace
+            .getLeavesOfType(VIEW_TYPE_AGENDA)
+            .forEach((leaf) => leaf.detach());
     }
 
     async loadSettings() {

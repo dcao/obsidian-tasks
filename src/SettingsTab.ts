@@ -25,7 +25,11 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Global task filter')
             .setDesc(
-                'The global filter will be applied to all checklist items.',
+                'The global filter will be applied to all checklist items to filter out "non-task" checklist items.\n' +
+                'A checklist item must include the specified string in its description in order to be considered a task.\n' +
+                'For example, if you set the global filter to `#task`, the Tasks plugin will only handle checklist items tagged with `#task`.\n' +
+                'Other checklist items will remain normal checklist items and not appear in queries or get a done date set.\n' +
+                'Leave empty if you want all checklist items from your vault to be tasks managed by this plugin.\n',
             )
             .addText((text) => {
                 const settings = getSettings();
@@ -38,15 +42,6 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
-        containerEl.createEl('div', {
-            cls: 'setting-item-description',
-            text:
-                'The global filter will be applied to all checklist items to filter out "non-task" checklist items.\n' +
-                'A checklist item must include the specified string in its description in order to be considered a task.\n' +
-                'For example, if you set the global filter to `#task`, the Tasks plugin will only handle checklist items tagged with `#task`.\n' +
-                'Other checklist items will remain normal checklist items and not appear in queries or get a done date set.\n' +
-                'Leave empty if you want all checklist items from your vault to be tasks managed by this plugin.',
-        });
 
         new Setting(containerEl)
             .setName('Remove global filter from description')
