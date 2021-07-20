@@ -332,6 +332,14 @@
     "@event-calendar/common" "~0.2.0"
     "svelte" "^3.38.3"
 
+"@event-calendar/day-grid@^0.2.0":
+  "integrity" "sha512-QNxGVb60xBSSclswxifWcgEXw8F/W0wG99myPneXoY9F77uh/mIevNxwam8xwKS9ePTvcOQ3QlSmJswE6VJu8g=="
+  "resolved" "https://registry.npmjs.org/@event-calendar/day-grid/-/day-grid-0.2.0.tgz"
+  "version" "0.2.0"
+  dependencies:
+    "@event-calendar/common" "~0.2.0"
+    "svelte" "^3.38.3"
+
 "@event-calendar/list@^0.2.0":
   "integrity" "sha512-/eYYnsgLgGjNCFNVlIwv/twqt3V7lyIOAMRCFa8l0IQtPq4J8ZkENZ8ErRfvjsrMF5kJby/7gOiFjjvYiyUOKw=="
   "resolved" "https://registry.npmjs.org/@event-calendar/list/-/list-0.2.0.tgz"

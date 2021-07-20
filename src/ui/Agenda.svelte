@@ -7,6 +7,7 @@
     import Calendar from '@event-calendar/core';
     import '@event-calendar/core/index.css';
     import TimeGrid from '@event-calendar/time-grid';
+    import DayGrid from '@event-calendar/day-grid';
     import List from '@event-calendar/list';
     import moment from 'moment';
 
@@ -21,13 +22,25 @@
     onDestroy(() => events.off(sub));
 
     // Calendar stuff
-    let plugins = [TimeGrid, List];
+    let plugins = [TimeGrid, DayGrid, List];
     $: options = {
         view: 'timeGridWeek',
         headerToolbar: {
             start: 'title',
             center: '',
-            end: 'timeGridDay,timeGridWeek,listWeek prev,next',
+            end: 'timeGridDay,timeGridWeek,dayGridMonth,listWeek prev,next',
+        },
+        buttonText: {
+            today: 't',
+            dayGridMonth: 'm',
+            listDay: 'l',
+            listWeek: 'l',
+            listMonth: 'l',
+            listYear: 'l',
+            resourceTimeGridDay: 'd',
+            resourceTimeGridWeek: 'w',
+            timeGridDay: 'd',
+            timeGridWeek: 'w',
         },
         eventContent: (ei: any) =>
             `<div class="ec-event-title">${
@@ -48,8 +61,14 @@
                 return {
                     start: t.dueStart?.toDate(),
                     end: end.toDate(),
-                    title: t.description,
-                    backgroundColor: t.status === Status.Done ? 'gray' : 'var(--interactive-accent)',
+                    title:
+                        t.precedingHeader !== null
+                            ? `${t.description} (${t.path} > ${t.precedingHeader})`
+                            : `${t.description} (${t.path})`,
+                    backgroundColor:
+                        t.status === Status.Done
+                            ? 'gray'
+                            : 'var(--interactive-accent)',
                 };
             })
             .concat([
@@ -77,7 +96,8 @@
     }
 
     .parent :global(.ec-time),
-    .parent :global(.ec-header .ec-day) {
+    .parent :global(.ec-header .ec-day),
+    .parent :global(.ec-day-head) {
         font-family: var(--font-monospace);
         font-size: 0.5rem;
     }

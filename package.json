@@ -21,6 +21,7 @@
   "license": "MIT",
   "devDependencies": {
     "@event-calendar/core": "^0.2.0",
+    "@event-calendar/day-grid": "^0.2.0",
     "@event-calendar/list": "^0.2.0",
     "@event-calendar/time-grid": "^0.2.0",
     "@rollup/plugin-commonjs": "^15.1.0",
