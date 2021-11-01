@@ -40,7 +40,7 @@ export class Task {
     // The following regexes end with `$` because they will be matched and
     // removed from the end until none are left.
     // public static readonly dueDateRegex = /!(\d{4}-\d{2}-\d{2})$/u;
-    public static readonly dueDateRegex = /!(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?)(--((\d{4}-\d{2}-\d{2})|(\d{2}:\d{2})|(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})))?$/u;
+    public static readonly dueDateRegex = /!\{?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?)(--((\d{4}-\d{2}-\d{2})|(\d{2}:\d{2})|(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})))?\}?$/u;
     public static readonly doneDateRegex = /✅ ?(\d{4}-\d{2}-\d{2})$/u;
     public static readonly recurrenceRegex = /\+([a-zA-Z0-9, !]+)$/u;
     public static readonly blockLinkRegex = / \^[a-zA-Z0-9-]+$/u;
@@ -372,6 +372,7 @@ export class Task {
                 today.set({
                     hour: dtStart.get("hour"),
                     minute: dtStart.get("minute"),
+                    second: dtStart.get("second"),
                 });
                 const after = today.isAfter(dtStart) ? today : dtStart;
                 const next = rrule.after(after.toDate(), false);

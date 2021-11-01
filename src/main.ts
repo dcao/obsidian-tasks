@@ -37,7 +37,24 @@ export default class TasksPlugin extends Plugin {
         new QueryRenderer({ plugin: this, events });
         new Commands({ plugin: this });
 
-        this.registerView(VIEW_TYPE_AGENDA, (leaf) => (this.agendaView = new AgendaView(leaf, events)));
+        this.registerView(VIEW_TYPE_AGENDA, (leaf) => (this.agendaView = new AgendaView(leaf, events, this.cache!.getTasks())));
+
+        if (this.app.workspace.layoutReady) {
+            this.initLeaf();
+        } else {
+            this.registerEvent(
+                this.app.workspace.on("layout-ready", this.initLeaf.bind(this))
+            );
+        }
+    }
+
+    initLeaf(): void {
+        if (this.app.workspace.getLeavesOfType(VIEW_TYPE_AGENDA).length) {
+            return;
+        }
+        this.app.workspace.getRightLeaf(false).setViewState({
+            type: VIEW_TYPE_AGENDA,
+        });
     }
 
     onunload() {

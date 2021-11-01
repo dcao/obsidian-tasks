@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "chrono-node": "^2.2.6",
+    "obsidian-daily-notes-interface": "^0.9.4",
     "rrule": "^2.6.8"
   }
 }

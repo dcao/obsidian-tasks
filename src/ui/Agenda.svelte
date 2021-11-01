@@ -12,8 +12,11 @@
     import moment from 'moment';
 
     export let events: Events;
+    export let tasks: Task[];
+    export let onClickDay: any;
+    export let onClickEvent: any;
 
-    let tasks: Task[] = [];
+    // let tasks: Task[] = [];
 
     let sub = events.onCacheUpdate((data) => {
         tasks = data.tasks;
@@ -42,6 +45,8 @@
             timeGridDay: 'd',
             timeGridWeek: 'w',
         },
+        dateClick: onClickDay,
+        eventClick: onClickEvent,
         eventContent: (ei: any) =>
             `<div class="ec-event-title">${
                 ei.event.title
@@ -69,6 +74,10 @@
                         t.status === Status.Done
                             ? 'gray'
                             : 'var(--interactive-accent)',
+                    extendedProps: {
+                        path: t.path,
+                        line: t.sectionStart,
+                    },
                 };
             })
             .concat([
@@ -77,6 +86,10 @@
                     end: moment().add(1, 'minute').toDate(),
                     title: 'Current time',
                     backgroundColor: 'red',
+                    extendedProps: {
+                        path: "",
+                        line: 0,
+                    },
                 },
             ]),
     };
