@@ -7,10 +7,8 @@ import {
 } from 'obsidian';
 
 import { State } from './Cache';
-import { replaceTaskWithTasks } from './File';
 import { Query } from './Query';
 import { Sort } from './Sort';
-import { TaskModal } from './TaskModal';
 import type { Events } from './Events';
 import type { Task } from './Task';
 
@@ -201,28 +199,6 @@ class QueryRenderChild extends MarkdownRenderChild {
                 link.setText(linkText);
                 postInfo.append(')');
             }
-
-            const editTaskPencil = postInfo.createEl('a', {
-                cls: 'tasks-edit',
-            });
-            editTaskPencil.onClickEvent((event: MouseEvent) => {
-                event.preventDefault();
-
-                const onSubmit = (updatedTasks: Task[]): void => {
-                    replaceTaskWithTasks({
-                        originalTask: task,
-                        newTasks: updatedTasks,
-                    });
-                };
-
-                // Need to create a new instance every time, as cursor/task can change.
-                const taskModal = new TaskModal({
-                    app: this.app,
-                    task,
-                    onSubmit,
-                });
-                taskModal.open();
-            });
 
             taskList.appendChild(listItem);
         }

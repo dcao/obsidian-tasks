@@ -9,6 +9,8 @@ export class Query {
 
     private readonly noDueString = 'no due date';
     private readonly dueRegexp = /due (before|after|on)? ?(.*)/;
+    private readonly schedRegexp = /scheduled (before|after|on)? ?(.*)/;
+    private readonly anyRegexp = /any (before|after|on)? ?(.*)/;
     private readonly doneString = 'done';
     private readonly notDoneString = 'not done';
     private readonly doneRegexp = /done (before|after|on)? ?(.*)/;
@@ -42,6 +44,12 @@ export class Query {
                         break;
                     case line === this.noDueString:
                         this._filters.push((task) => task.dueStart === null);
+                        break;
+                    case this.anyRegexp.test(line):
+                        this.parseAnyFilter({ line });
+                        break;
+                    case this.schedRegexp.test(line):
+                        this.parseSchedFilter({ line });
                         break;
                     case this.dueRegexp.test(line):
                         this.parseDueFilter({ line });
@@ -77,6 +85,107 @@ export class Query {
 
     public get error(): string | undefined {
         return this._error;
+    }
+    
+    private parseAnyFilter({ line }: { line: string }): void {
+        const anyMatch = line.match(this.anyRegexp);
+        if (anyMatch !== null) {
+            const filterDate = this.parseDate(anyMatch[2]);
+            if (!filterDate.isValid()) {
+                this._error = 'invalid any date in query';
+            }
+
+            let filter;
+            if (anyMatch[1] === 'before') {
+                filter = (task: Task) => {
+                    if (task.dueStart) {
+                        if (task.dueStart.isBefore(filterDate)) return true;
+                    }
+                    
+                    return task.schedStart ? task.schedStart.isBefore(filterDate) : false;
+                };
+            } else if (anyMatch[1] === 'after') {
+                // For after queries, if the filter date's hour and min are 0,
+                // check for after the end of day by setting filter date to end of day.
+                const zeroHm = filterDate.get("hour") === 0 && filterDate.get("minute") === 0;
+                if (zeroHm) {
+                    filterDate.endOf('day');
+                }
+
+                filter = (task: Task) => {
+                    if (task.dueStart) {
+                        if (task.dueStart.isAfter(filterDate)) return true;
+                    }
+                    
+                    return task.schedStart ? task.schedStart.isAfter(filterDate) : false;
+                };
+            } else {
+                // For same queries, if the filter date's hour and min are 0,
+                // check for if it's same day, not exactly the same.
+                const zeroHm = filterDate.get("hour") === 0 && filterDate.get("minute") === 0;
+                if (zeroHm) {
+                    filter = (task: Task) => {
+                        if (task.dueStart) {
+                            if (task.dueStart.isSame(filterDate, 'day')) return true;
+                        }
+                        
+                        return task.schedStart ? task.schedStart.isSame(filterDate, 'day') : false;
+                    };
+                } else {
+                    filter = (task: Task) => {
+                        if (task.dueStart) {
+                            if (task.dueStart.isSame(filterDate)) return true;
+                        }
+                        
+                        return task.schedStart ? task.schedStart.isSame(filterDate) : false;
+                    };
+                }
+            }
+
+            this._filters.push(filter);
+        } else {
+            this._error = 'invalid any date in query';
+        }
+    }
+
+    private parseSchedFilter({ line }: { line: string }): void {
+        const schedMatch = line.match(this.schedRegexp);
+        if (schedMatch !== null) {
+            const filterDate = this.parseDate(schedMatch[2]);
+            if (!filterDate.isValid()) {
+                this._error = 'invalid sched date in query';
+            }
+
+            let filter;
+            if (schedMatch[1] === 'before') {
+                filter = (task: Task) =>
+                    task.schedStart ? task.schedStart.isBefore(filterDate) : false;
+            } else if (schedMatch[1] === 'after') {
+                // For after queries, if the filter date's hour and min are 0,
+                // check for after the end of day by setting filter date to end of day.
+                const zeroHm = filterDate.get("hour") === 0 && filterDate.get("minute") === 0;
+                if (zeroHm) {
+                    filterDate.endOf('day');
+                }
+                filter = (task: Task) =>
+                    task.schedStart ? task.schedStart.isAfter(filterDate) : false;
+            } else {
+                // For same queries, if the filter date's hour and min are 0,
+                // check for if it's same day, not exactly the same.
+                const zeroHm = filterDate.get("hour") === 0 && filterDate.get("minute") === 0;
+                if (zeroHm) {
+                    filter = (task: Task) =>
+                        task.schedStart ? task.schedStart.isSame(filterDate, 'day') : false;
+                } else {
+                    filter = (task: Task) =>
+                        task.schedStart ? task.schedStart.isSame(filterDate) : false;
+                }
+            }
+
+            this._filters.push(filter);
+        } else {
+            this._error = 'invalid sched date in query';
+        }
     }
 
     private parseDueFilter({ line }: { line: string }): void {

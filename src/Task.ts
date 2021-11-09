@@ -1,9 +1,9 @@
 import { Component, MarkdownRenderer } from 'obsidian';
-import { RRule } from 'rrule';
 
 import { replaceTaskWithTasks } from './File';
 import { getSettings } from './Settings';
 import type { Moment } from 'moment';
+import { Recurrence } from './Recurrence';
 
 export enum Status {
     Todo = 'Todo',
@@ -25,10 +25,17 @@ export class Task {
      */
     public readonly originalStatusCharacter: string;
     public readonly precedingHeader: string | null;
+
     public readonly dueStart: Moment | null;
     public readonly dueStop: Moment | null;
+
+    public readonly schedStart: Moment | null;
+    public readonly schedStop: Moment | null;
+
     public readonly doneDate: Moment | null;
-    public readonly recurrenceRule: RRule | null;
+
+    public readonly recurrence: Recurrence | null;
+
     /** The blockLink is a "^" annotation after the dates/recurrence rules. */
     public readonly blockLink: string;
 
@@ -39,8 +46,8 @@ export class Task {
     public static readonly taskRegex = /^([\s\t]*)[-*] +\[(.)\] *(.*)/u;
     // The following regexes end with `$` because they will be matched and
     // removed from the end until none are left.
-    // public static readonly dueDateRegex = /!(\d{4}-\d{2}-\d{2})$/u;
     public static readonly dueDateRegex = /!\{?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?)(--((\d{4}-\d{2}-\d{2})|(\d{2}:\d{2})|(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})))?\}?$/u;
+    public static readonly schedDateRegex = /@\{?(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?)(--((\d{4}-\d{2}-\d{2})|(\d{2}:\d{2})|(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})))?\}?$/u;
     public static readonly doneDateRegex = /✅ ?(\d{4}-\d{2}-\d{2})$/u;
     public static readonly recurrenceRegex = /\+([a-zA-Z0-9, !]+)$/u;
     public static readonly blockLinkRegex = / \^[a-zA-Z0-9-]+$/u;
@@ -54,10 +61,12 @@ export class Task {
         sectionIndex,
         originalStatusCharacter,
         precedingHeader,
+        schedStart,
+        schedStop,
         dueStart,
         dueStop,
         doneDate,
-        recurrenceRule,
+        recurrence,
         blockLink,
     }: {
         status: Status;
@@ -68,10 +77,12 @@ export class Task {
         sectionIndex: number;
         originalStatusCharacter: string;
         precedingHeader: string | null;
+        schedStart: moment.Moment | null;
+        schedStop: moment.Moment | null;
         dueStart: moment.Moment | null;
         dueStop: moment.Moment | null;
         doneDate: moment.Moment | null;
-        recurrenceRule: RRule | null;
+        recurrence: Recurrence | null;
         blockLink: string;
     }) {
         this.status = status;
@@ -82,10 +93,12 @@ export class Task {
         this.sectionIndex = sectionIndex;
         this.originalStatusCharacter = originalStatusCharacter;
         this.precedingHeader = precedingHeader;
+        this.schedStart = schedStart;
+        this.schedStop = schedStop;
         this.dueStart = dueStart;
         this.dueStop = dueStop;
         this.doneDate = doneDate;
-        this.recurrenceRule = recurrenceRule;
+        this.recurrence = recurrence;
         this.blockLink = blockLink;
     }
 
@@ -140,12 +153,16 @@ export class Task {
         // description in any order. The loop should only run once if the
         // strings are in the expected order after the description.
         let matched: boolean;
-        let dueStart: Moment | null = null;
-        let dueStop: Moment | null = null;
+
+        var schedStart: Moment | null = null;
+        var schedStop: Moment | null = null;
+        var dueStart: Moment | null = null;
+        var dueStop: Moment | null = null;
+
         let doneDate: Moment | null = null;
-        let recurrenceRule: RRule | null = null;
+        let recurrence: Recurrence | null = null;
         // Add a "max runs" failsafe to never end in an endless loop:
-        const maxRuns = 4;
+        const maxRuns = 6;
         let runs = 0;
         do {
             matched = false;
@@ -155,6 +172,40 @@ export class Task {
                 description = description
                     .replace(Task.doneDateRegex, '')
                     .trim();
+                matched = true;
+            }
+            
+            const schedDateMatch = description.match(Task.schedDateRegex);
+            if (schedDateMatch !== null) {
+                // sched date start
+                if (schedDateMatch[2]) {
+                    schedStart = window.moment(schedDateMatch[1], Task.dateTimeFormat);
+                } else {
+                    schedStart = window.moment(schedDateMatch[1], Task.dateFormat);
+                }
+
+                // sched date stop
+                if (schedDateMatch[3]) {
+                    // we have an end sched date!
+                    // there are three cases:
+                    if (schedDateMatch[5]) {
+                        // just date
+                        schedStop = window.moment(schedDateMatch[5], Task.dateFormat);
+                    } else if (schedDateMatch[6]) {
+                        // just time
+                        schedStop = window.moment(schedDateMatch[6], Task.timeFormat);
+                        schedStop.set({
+                            year: schedStart.get('year'),
+                            month: schedStart.get('month'),
+                            date: schedStart.get('date')
+                        });
+                    } else {
+                        // both date and time
+                        schedStop = window.moment(schedDateMatch[7], Task.dateTimeFormat);
+                    }
+                }
+
+                description = description.replace(Task.schedDateRegex, '').trim();
                 matched = true;
             }
 
@@ -194,11 +245,13 @@ export class Task {
 
             const recurrenceMatch = description.match(Task.recurrenceRegex);
             if (recurrenceMatch !== null) {
-                try {
-                    recurrenceRule = RRule.fromText(recurrenceMatch[1].trim());
-                } catch (error) {
-                    // Could not read recurrence rule. User possibly not done typing.
-                }
+                recurrence = Recurrence.fromText({
+                    recurrenceRuleText: recurrenceMatch[1].trim(),
+                    schedStart,
+                    schedStop,
+                    dueStart,
+                    dueStop,
+                });
 
                 description = description
                     .replace(Task.recurrenceRegex, '')
@@ -218,10 +271,12 @@ export class Task {
             sectionIndex,
             originalStatusCharacter: statusString,
             precedingHeader,
+            schedStart,
+            schedStop,
             dueStart,
             dueStop,
             doneDate,
-            recurrenceRule,
+            recurrence,
             blockLink,
         });
 
@@ -301,6 +356,18 @@ export class Task {
     }
 
     public toString(): string {
+        const schedStart: string = this.schedStart
+            ? this.schedStart.get('hour') === 0 && this.schedStart.get('minute') === 0
+                ? ` @${this.schedStart.format(Task.dateFormat)}`
+                : ` @${this.schedStart.format(Task.dateTimeFormat)}`
+            : '';
+        const schedStop: string = this.schedStart && this.schedStop
+            ? this.schedStart.format(Task.dateFormat) === this.schedStop.format(Task.dateFormat)
+                ? `--${this.schedStop.format(Task.timeFormat)}`
+                : this.schedStop.get('hour') === 0 && this.schedStop.get('minute') === 0
+                    ? `--${this.schedStop.format(Task.dateFormat)}`
+                    : `--${this.schedStop.format(Task.dateTimeFormat)}`
+            : '';
         const dueStart: string = this.dueStart
             ? this.dueStart.get('hour') === 0 && this.dueStart.get('minute') === 0
                 ? ` !${this.dueStart.format(Task.dateFormat)}`
@@ -313,14 +380,14 @@ export class Task {
                     ? `--${this.dueStop.format(Task.dateFormat)}`
                     : `--${this.dueStop.format(Task.dateTimeFormat)}`
             : '';
-        const recurrenceRule: string = this.recurrenceRule
-            ? ` +${this.recurrenceRule.toText()}`
+        const recurrenceRule: string = this.recurrence
+            ? ` +${this.recurrence.toText()}`
             : '';
         const doneDate: string = this.doneDate
             ? ` ✅ ${this.doneDate.format(Task.dateFormat)}`
             : '';
 
-        return `${this.description}${dueStart}${dueStop}${recurrenceRule}${doneDate}${this.blockLink}`;
+        return `${this.description}${recurrenceRule}${schedStart}${schedStop}${dueStart}${dueStop}${doneDate}${this.blockLink}`;
     }
 
     public toFileLineString(): string {
@@ -341,48 +408,18 @@ export class Task {
         const newStatus: Status =
             this.status === Status.Todo ? Status.Done : Status.Todo;
         let newDoneDate = null;
-        let nextStart: Moment | undefined;
-        let nextStop: Moment | null | undefined = null;
+        let nextOccurrence: {
+            schedStart: Moment | null;
+            schedStop: Moment | null;
+            dueStart: Moment | null;
+            dueStop: Moment | null;
+        } | null = null;
         if (newStatus !== Status.Todo) {
             newDoneDate = window.moment();
 
             // If this task is no longer todo, we need to check if it is recurring:
-            if (this.recurrenceRule !== null) {
-                // If no due date, next occurrence is after "today".
-                const dtStart: Moment =
-                    this.dueStart !== null ? this.dueStart.clone() : window.moment().startOf('day');
-
-                // RRule disregards the timezone:
-                // dtStart.utc(true);
-
-                // Create a new rrule with `dtstart` set so that the date of
-                // the new occurrence is calculated based on the original due
-                // date and not based on today.
-                const rrule = new RRule({
-                    ...this.recurrenceRule.options,
-                    byhour: null,
-                    byminute: null,
-                    bysecond: null,
-                    dtstart: dtStart.toDate(),
-                });
-
-                // The next occurrence should happen after today (with the same time
-                // as the start time) or the due date, whatever is later.
-                const today = window.moment().utc(true);
-                today.set({
-                    hour: dtStart.get("hour"),
-                    minute: dtStart.get("minute"),
-                    second: dtStart.get("second"),
-                });
-                const after = today.isAfter(dtStart) ? today : dtStart;
-                const next = rrule.after(after.toDate(), false);
-
-                if (next !== null) {
-                    // Re-add the timezone that RRule disregarded:
-                    nextStart = window.moment(next);
-                    nextStop = this.dueStop?.clone();
-                    nextStop?.add(nextStart.diff(this.dueStart));
-                }
+            if (this.recurrence !== null) {
+                nextOccurrence = this.recurrence.next();
             }
         }
 
@@ -395,11 +432,10 @@ export class Task {
 
         const newTasks: Task[] = [];
 
-        if (nextStart !== undefined) {
+        if (nextOccurrence !== null) {
             const nextTask = new Task({
                 ...this,
-                dueStart: nextStart,
-                dueStop: nextStop,
+                ...nextOccurrence,
                 // New occurrences cannot have the same block link.
                 // And random block links don't help.
                 blockLink: '',

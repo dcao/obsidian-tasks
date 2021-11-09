@@ -58,27 +58,55 @@
             }).format(ei.event.end)}</div>`,
         dayHeaderFormat: { weekday: 'short', day: 'numeric' },
         events: tasks
-            .filter((t) => t.dueStart !== null)
-            .map((t) => {
-                const end = t.dueStop
-                    ? t.dueStop
-                    : t.dueStart!.clone().add(1, 'hour');
-                return {
-                    start: t.dueStart?.toDate(),
-                    end: end.toDate(),
-                    title:
-                        t.precedingHeader !== null
-                            ? `${t.description} (${t.path} > ${t.precedingHeader})`
-                            : `${t.description} (${t.path})`,
-                    backgroundColor:
-                        t.status === Status.Done
-                            ? 'gray'
-                            : 'var(--interactive-accent)',
-                    extendedProps: {
-                        path: t.path,
-                        line: t.sectionStart,
-                    },
-                };
+            .filter((t) => t.dueStart !== null || t.schedStart !== null)
+            .flatMap((t) => {
+                let list = [];
+
+                if (t.schedStart) {
+                    const end = t.schedStop
+                        ? t.schedStop
+                        : t.schedStart!.clone().add(1, 'hour');
+                    list.push({
+                        start: t.schedStart?.toDate(),
+                        end: end.toDate(),
+                        title:
+                            t.precedingHeader !== null
+                                ? `${t.description} (${t.path} > ${t.precedingHeader})`
+                                : `${t.description} (${t.path})`,
+                        backgroundColor:
+                            t.status === Status.Done
+                                ? 'gray'
+                                : 'var(--interactive-accent-hover)',
+                        extendedProps: {
+                            path: t.path,
+                            line: t.sectionStart,
+                        },
+                    });
+                }
+
+                if (t.dueStart) {
+                    const end = t.dueStop
+                        ? t.dueStop
+                        : t.dueStart!.clone().add(1, 'hour');
+                    list.push({
+                        start: t.dueStart?.toDate(),
+                        end: end.toDate(),
+                        title:
+                            t.precedingHeader !== null
+                                ? `${t.description} (${t.path} > ${t.precedingHeader})`
+                                : `${t.description} (${t.path})`,
+                        backgroundColor:
+                            t.status === Status.Done
+                                ? 'gray'
+                                : 'var(--interactive-accent)',
+                        extendedProps: {
+                            path: t.path,
+                            line: t.sectionStart,
+                        },
+                    });
+                }
+
+                return list;
             })
             .concat([
                 {
