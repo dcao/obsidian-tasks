@@ -27,15 +27,15 @@
     // Calendar stuff
     let plugins = [TimeGrid, DayGrid, List];
     $: options = {
-        view: 'timeGridWeek',
+        view: 'timeGridDay',
         headerToolbar: {
             start: 'title',
             center: '',
-            end: 'timeGridDay,timeGridWeek,dayGridMonth,listWeek prev,next',
+            end: 'timeGridDay,timeGridWeek,listWeek,today prev,next',
         },
         buttonText: {
             today: 't',
-            dayGridMonth: 'm',
+            // dayGridMonth: 'm',
             listDay: 'l',
             listWeek: 'l',
             listMonth: 'l',
@@ -123,7 +123,7 @@
     };
 </script>
 
-<div class="parent">
+<div class="parent" style="padding: 10px 0 0 8px;">
     <Calendar {plugins} {options} />
 </div>
 

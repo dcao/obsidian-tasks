@@ -37,6 +37,7 @@ export class QueryRenderer {
                 events: this.events,
                 container: element,
                 source,
+                sourcePath: context.sourcePath,
             }),
         );
     }
@@ -46,6 +47,7 @@ class QueryRenderChild extends MarkdownRenderChild {
     private readonly app: App;
     private readonly events: Events;
     private readonly source: string;
+    private readonly sourcePath: string;
     private query: Query;
 
     private renderEventRef: EventRef | undefined;
@@ -56,17 +58,20 @@ class QueryRenderChild extends MarkdownRenderChild {
         events,
         container,
         source,
+        sourcePath,
     }: {
         app: App;
         events: Events;
         container: HTMLElement;
         source: string;
+        sourcePath: string;
     }) {
         super(container);
 
         this.app = app;
         this.events = events;
         this.source = source;
+        this.sourcePath = sourcePath;
 
         this.query = new Query({ source });
     }
@@ -121,10 +126,16 @@ class QueryRenderChild extends MarkdownRenderChild {
                 content,
             });
             content.appendChild(taskList);
-            content.createDiv({
-                text: `${tasksCount} task${tasksCount !== 1 ? 's' : ''}`,
-                cls: 'tasks-count',
-            });
+            if (tasksCount === 0) {
+                content.createDiv({
+                    text: "no tasks in query",
+                    cls: 'tasks-count',
+                });
+            }
+            // content.createDiv({
+            //     text: `${tasksCount} task${tasksCount !== 1 ? 's' : ''}`,
+            //     cls: 'tasks-count',
+            // });
         } else if (this.query.error !== undefined) {
             content.setText(`Tasks query: ${this.query.error}`);
         } else {
@@ -156,6 +167,7 @@ class QueryRenderChild extends MarkdownRenderChild {
             'contains-task-list',
             'plugin-tasks-query-result',
         ]);
+
         for (let i = 0; i < tasksCount; i++) {
             const task = tasksSortedLimited[i];
 
@@ -168,37 +180,38 @@ class QueryRenderChild extends MarkdownRenderChild {
             const listItem = await task.toLi({
                 parentUlElement: taskList,
                 listIndex: i,
+                sourcePath: this.sourcePath,
             });
 
-            const postInfo = listItem.createSpan();
-            if (fileName !== undefined) {
-                postInfo.append(' (');
-                const link = postInfo.createEl('a');
-                link.href = fileName;
-                link.setAttribute('data-href', fileName);
-                link.rel = 'noopener';
-                link.target = '_blank';
-                link.addClass('internal-link');
+            // const postInfo = listItem.createSpan();
+            // if (fileName !== undefined) {
+            //     postInfo.append(' (');
+            //     const link = postInfo.createEl('a');
+            //     link.href = fileName;
+            //     link.setAttribute('data-href', fileName);
+            //     link.rel = 'noopener';
+            //     link.target = '_blank';
+            //     link.addClass('internal-link');
 
-                let linkText = fileName;
-                if (task.precedingHeader !== null) {
-                    link.href = link.href + '#' + task.precedingHeader;
-                    link.setAttribute(
-                        'data-href',
-                        link.getAttribute('data-href') +
-                            '#' +
-                            task.precedingHeader,
-                    );
+            //     let linkText = fileName;
+            //     if (task.precedingHeader !== null) {
+            //         link.href = link.href + '#' + task.precedingHeader;
+            //         link.setAttribute(
+            //             'data-href',
+            //             link.getAttribute('data-href') +
+            //                 '#' +
+            //                 task.precedingHeader,
+            //         );
 
-                    // Otherwise, this wouldn't provide additinoal information and only take up space.
-                    if (task.precedingHeader !== fileName) {
-                        linkText = linkText + ' > ' + task.precedingHeader;
-                    }
-                }
+            //         // Otherwise, this wouldn't provide additinoal information and only take up space.
+            //         if (task.precedingHeader !== fileName) {
+            //             linkText = linkText + ' > ' + task.precedingHeader;
+            //         }
+            //     }
 
-                link.setText(linkText);
-                postInfo.append(')');
-            }
+            //     link.setText(linkText);
+            //     postInfo.append(')');
+            // }
 
             taskList.appendChild(listItem);
         }

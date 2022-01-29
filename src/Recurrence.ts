@@ -63,7 +63,6 @@ export class Recurrence {
     }): Recurrence | null {
         try {
             const options = RRule.parseText(recurrenceRuleText);
-            console.log(options);
             if (options !== null) {
                 // Pick the reference date for recurrence based on importance.
                 // Assuming due date has the highest priority.
@@ -78,6 +77,7 @@ export class Recurrence {
                 if (referenceDate !== null) {
                     options.dtstart = window
                         .moment(referenceDate)
+                        .utc(true)
                         .toDate();
                 }
 
@@ -86,7 +86,6 @@ export class Recurrence {
                 options.bysecond = null;
 
                 const rrule = new RRule(options);
-                console.log(rrule);
                 return new Recurrence({
                     rrule,
                     referenceDate,
@@ -127,13 +126,13 @@ export class Recurrence {
         }
 
         // after.endOf('day');
-        // after.utc(true);
+        after.utc(true);
 
         var next = this.rrule.after(after.toDate());
 
         if (next !== null) {
             // Re-add the timezone that RRule disregarded:
-            const nextOccurrence = window.moment(next);
+            const nextOccurrence = window.moment.utc(next).local(true);
 
             // Keep the relative difference between the reference date and
             // start/scheduled/due.

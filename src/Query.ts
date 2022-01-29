@@ -1,4 +1,5 @@
 import chrono from 'chrono-node';
+import type moment from 'moment';
 
 import { Status, Task } from './Task';
 
@@ -8,6 +9,7 @@ export class Query {
     private _error: string | undefined = undefined;
 
     private readonly noDueString = 'no due date';
+    private readonly noScheduledString = 'no scheduled date';
     private readonly dueRegexp = /due (before|after|on)? ?(.*)/;
     private readonly schedRegexp = /scheduled (before|after|on)? ?(.*)/;
     private readonly anyRegexp = /any (before|after|on)? ?(.*)/;
@@ -44,6 +46,9 @@ export class Query {
                         break;
                     case line === this.noDueString:
                         this._filters.push((task) => task.dueStart === null);
+                        break;
+                    case line === this.noScheduledString:
+                        this._filters.push((task) => task.schedStart === null);
                         break;
                     case this.anyRegexp.test(line):
                         this.parseAnyFilter({ line });
@@ -90,9 +95,16 @@ export class Query {
     private parseAnyFilter({ line }: { line: string }): void {
         const anyMatch = line.match(this.anyRegexp);
         if (anyMatch !== null) {
-            const filterDate = this.parseDate(anyMatch[2]);
-            if (!filterDate.isValid()) {
+            let filterDate: moment.Moment;
+            try {
+                filterDate = this.parseDate(anyMatch[2]);
+                if (!filterDate.isValid()) {
+                    this._error = 'invalid any date in query';
+                    return;
+                }
+            } catch {
                 this._error = 'invalid any date in query';
+                return;
             }
 
             let filter;
@@ -151,9 +163,16 @@ export class Query {
     private parseSchedFilter({ line }: { line: string }): void {
         const schedMatch = line.match(this.schedRegexp);
         if (schedMatch !== null) {
-            const filterDate = this.parseDate(schedMatch[2]);
-            if (!filterDate.isValid()) {
+            let filterDate: moment.Moment;
+            try {
+                filterDate = this.parseDate(schedMatch[2]);
+                if (!filterDate.isValid()) {
+                    this._error = 'invalid sched date in query';
+                    return;
+                }
+            } catch {
                 this._error = 'invalid sched date in query';
+                return;
             }
 
             let filter;
@@ -191,9 +210,16 @@ export class Query {
     private parseDueFilter({ line }: { line: string }): void {
         const dueMatch = line.match(this.dueRegexp);
         if (dueMatch !== null) {
-            const filterDate = this.parseDate(dueMatch[2]);
-            if (!filterDate.isValid()) {
+            let filterDate: moment.Moment;
+            try {
+                filterDate = this.parseDate(dueMatch[2]);
+                if (!filterDate.isValid()) {
+                    this._error = 'invalid due date in query';
+                    return;
+                }
+            } catch {
                 this._error = 'invalid due date in query';
+                return;
             }
 
             let filter;
@@ -231,9 +257,16 @@ export class Query {
     private parseDoneFilter({ line }: { line: string }): void {
         const doneMatch = line.match(this.doneRegexp);
         if (doneMatch !== null) {
-            const filterDate = this.parseDate(doneMatch[2]);
-            if (!filterDate.isValid()) {
+            let filterDate: moment.Moment;
+            try {
+                filterDate = this.parseDate(doneMatch[2]);
+                if (!filterDate.isValid()) {
+                    this._error = 'invalid done date in query';
+                    return;
+                }
+            } catch {
                 this._error = 'invalid done date in query';
+                return;
             }
 
             let filter;
@@ -341,8 +374,20 @@ export class Query {
     }
 
     private parseDate(input: string): moment.Moment {
+        const cc = chrono.casual.clone();
+        cc.parsers.push({
+            pattern: () => { return /\bweek of ([0-9]{4}-[0-9]{2}-[0-9]{2})\b/i },
+            extract: (context, match) => {
+                let m = window.moment(match[1]);
+                m.add(1, 'week');
+                return {
+                    year: m.year(), month: m.month() + 1, day: m.date()
+                }
+            }
+        });
+
         // Using start of date to correctly match on comparison with other dates (like equality).
-        const parsed = chrono.parse(input)[0];
+        const parsed = cc.parse(input)[0];
         const res = window.moment(parsed.date());
         if (!parsed.start.isCertain("hour") || !parsed.start.isCertain("minute")) {
             res.set({

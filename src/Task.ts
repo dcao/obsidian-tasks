@@ -286,22 +286,24 @@ export class Task {
     public async toLi({
         parentUlElement,
         listIndex,
+        sourcePath,
     }: {
         parentUlElement: HTMLElement;
         /** The nth item in this list (including non-tasks). */
         listIndex: number;
+        sourcePath: string;
     }): Promise<HTMLLIElement> {
         const li: HTMLLIElement = parentUlElement.createEl('li');
         li.addClasses(['task-list-item', 'plugin-tasks-list-item']);
 
-        let taskAsString = this.toString();
+        let taskAsString = this.toPlainString();
         const { globalFilter, removeGlobalFilter } = getSettings();
         if (removeGlobalFilter) {
             taskAsString = taskAsString.replace(globalFilter, '').trim();
         }
 
         await MarkdownRenderer.renderMarkdown(
-            taskAsString,
+            " " + taskAsString,
             li,
             this.path,
             null as unknown as Component,
@@ -347,6 +349,131 @@ export class Task {
 
         li.prepend(checkbox);
 
+        // post info
+        li.createEl("br");
+
+        const now = window.moment(Date.now());
+
+        // First, examine deadline time
+        if (this.dueStart) {
+            const due = li.createSpan();
+            let style = "font-size: 0.75em;margin-right: 1em;";
+            let text = "d. ";
+            // Check if this is due today.
+            if (this.dueStart.isSame(now, "day")) {
+                // In this case, we report time.
+                style += "color: var(--text-error);"
+
+                // If there's a stop period, we interpret 12am start.
+                // Otherwise, it's just due today generically.
+                if (this.dueStop) {
+                    text += this.dueStart.format("h:mma");
+                    text += "–";
+                    text += this.dueStop.format("h:mma");
+                } else {
+                    text += "0d";
+                }
+            } else {
+                let nowd = now.startOf("day");
+                let stad = this.dueStart.startOf("day");
+                let diff = stad.diff(nowd, "days");
+                text += `${diff}d`;
+                if (diff < 0) {
+                    style += "color: var(--text-error);";
+                } else {
+                    style += "color: var(--text-muted);";
+                }
+            }
+            due.textContent = text;
+            due.setAttribute("style", style);
+        }
+
+        // Next, examine scheduled time
+        if (this.schedStart) {
+            const sched = li.createSpan();
+            let style = "font-size: 0.75em;margin-right:1em;";
+            let text = "s. ";
+            // Check if this is due today.
+            if (this.schedStart.isSame(now, "day")) {
+                // In this case, we report time.
+                style += "color: var(--orange);"
+
+                // If there's a stop period, we interpret 12am start.
+                // Otherwise, it's just sched today generically.
+                if (this.schedStop) {
+                    text += this.schedStart.format("h:mma");
+                    text += "–";
+                    text += this.schedStop.format("h:mma");
+                } else {
+                    text += "0d";
+                }
+            } else {
+                let nowd = now.startOf("day");
+                let stad = this.schedStart.startOf("day");
+                let diff = stad.diff(nowd, "days");
+                text += `${diff}d`;
+                if (diff < 0) {
+                    style += "color: var(--orange);";
+                } else {
+                    style += "color: var(--text-muted);";
+                }
+            }
+            sched.textContent = text;
+            sched.setAttribute("style", style);
+        }
+
+        // Examine recurrence
+        if (this.recurrence) {
+            const recur = li.createSpan();
+            let style = "font-size: 0.75em; margin-right: 1em; color: var(--text-muted)";
+            let text = this.recurrence.toText();
+
+            recur.textContent = `+${text}`;
+            recur.setAttribute("style", style);
+        }
+
+        // Finally, the section. Only add if the source path differs from this path.
+        if (sourcePath) {
+            const sec = li.createSpan();
+            sec.setAttribute("style", "font-size: 0.75em; color: var(--text-muted);");
+
+            let fileName: string | undefined;
+            const fileNameMatch = this.path.match(/([^/]+)\.md$/);
+            if (fileNameMatch !== null) {
+                fileName = fileNameMatch[1];
+            }
+
+            if (fileName !== undefined) {
+                sec.append('(');
+                const link = sec.createEl('a');
+                link.href = fileName;
+                link.setAttribute('data-href', fileName);
+                link.rel = 'noopener';
+                link.target = '_blank';
+                link.addClass('internal-link');
+
+                let linkText = fileName;
+                if (this.precedingHeader !== null) {
+                    link.href = link.href + '#' + this.precedingHeader;
+                    link.setAttribute(
+                        'data-href',
+                        link.getAttribute('data-href') +
+                            '#' +
+                            this.precedingHeader,
+                    );
+
+                    // Otherwise, this wouldn't provide additinoal information and only take up space.
+                    if (this.precedingHeader !== fileName) {
+                        linkText = linkText + ' > ' + this.precedingHeader;
+                    }
+                }
+
+                link.setText(linkText);
+                sec.append(')');
+            }
+        }
+
+
         // Set these to be compatible with stock obsidian lists:
         li.setAttr('data-task', this.originalStatusCharacter.trim()); // Trim to ensure empty attribute for space. Same way as obsidian.
         li.setAttr('data-line', listIndex);
@@ -388,6 +515,10 @@ export class Task {
             : '';
 
         return `${this.description}${recurrenceRule}${schedStart}${schedStop}${dueStart}${dueStop}${doneDate}${this.blockLink}`;
+    }
+
+    public toPlainString(): string {
+        return `${this.description}`;
     }
 
     public toFileLineString(): string {
