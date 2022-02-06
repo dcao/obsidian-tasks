@@ -4879,6 +4879,11 @@
   "resolved" "https://registry.npmjs.org/shellwords/-/shellwords-0.1.1.tgz"
   "version" "0.1.1"
 
+"sherlockjs@^1.4.2":
+  "integrity" "sha512-Liynk2FRTyiHLzMqoe1LvRkT3MhMjUphIBKGa1pRovDKXEaygwpha76om/qV9YTG3qFr1+UIifEuH0VU+KVuRA=="
+  "resolved" "https://registry.npmjs.org/sherlockjs/-/sherlockjs-1.4.2.tgz"
+  "version" "1.4.2"
+
 "signal-exit@^3.0.0", "signal-exit@^3.0.2":
   "integrity" "sha512-VUJ49FC8U1OxwZLxIbTTrDvLnf/6TDgxZcK8wxR8zs13xpx7xbG60ndBlhNrFi2EMuFRoeDoJO7wthSLq42EjA=="
   "resolved" "https://registry.npmjs.org/signal-exit/-/signal-exit-3.0.3.tgz"

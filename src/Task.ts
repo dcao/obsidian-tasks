@@ -349,20 +349,29 @@ export class Task {
 
         li.prepend(checkbox);
 
-        // post info
-        li.createEl("br");
+        let addedBr = false;
 
         const now = window.moment(Date.now());
 
         // First, examine deadline time
         if (this.dueStart) {
+            if (!addedBr) {
+                addedBr = true;
+                // post info
+                li.createEl("br");
+            }
+
             const due = li.createSpan();
-            let style = "font-size: 0.75em;margin-right: 1em;";
-            let text = "d. ";
+            let style = "font-size: 0.75em;margin-right: 0.5em;";
+            let text = " d. ";
             // Check if this is due today.
             if (this.dueStart.isSame(now, "day")) {
                 // In this case, we report time.
-                style += "color: var(--text-error);"
+                if (this.status == Status.Todo) {
+                    style += "color: var(--text-error);"
+                } else {
+                    style += "color: var(--text-muted);"
+                }
 
                 // If there's a stop period, we interpret 12am start.
                 // Otherwise, it's just due today generically.
@@ -375,10 +384,10 @@ export class Task {
                 }
             } else {
                 let nowd = now.startOf("day");
-                let stad = this.dueStart.startOf("day");
+                let stad = this.dueStart.clone().startOf("day");
                 let diff = stad.diff(nowd, "days");
                 text += `${diff}d`;
-                if (diff < 0) {
+                if (diff < 0 && this.status == Status.Todo) {
                     style += "color: var(--text-error);";
                 } else {
                     style += "color: var(--text-muted);";
@@ -390,13 +399,23 @@ export class Task {
 
         // Next, examine scheduled time
         if (this.schedStart) {
+            if (!addedBr) {
+                addedBr = true;
+                // post info
+                li.createEl("br");
+            }
+
             const sched = li.createSpan();
-            let style = "font-size: 0.75em;margin-right:1em;";
-            let text = "s. ";
+            let style = "font-size: 0.75em;margin-right:0.5em;";
+            let text = " s. ";
             // Check if this is due today.
             if (this.schedStart.isSame(now, "day")) {
                 // In this case, we report time.
-                style += "color: var(--orange);"
+                if (this.status == Status.Todo) {
+                    style += "color: var(--orange);"
+                } else {
+                    style += "color: var(--text-muted);"
+                }
 
                 // If there's a stop period, we interpret 12am start.
                 // Otherwise, it's just sched today generically.
@@ -409,11 +428,11 @@ export class Task {
                 }
             } else {
                 let nowd = now.startOf("day");
-                let stad = this.schedStart.startOf("day");
+                let stad = this.schedStart.clone().startOf("day");
                 let diff = stad.diff(nowd, "days");
                 text += `${diff}d`;
-                if (diff < 0) {
-                    style += "color: var(--orange);";
+                if (diff < 0 && this.status == Status.Todo) {
+                    style += "color: var(--orange);"
                 } else {
                     style += "color: var(--text-muted);";
                 }
@@ -424,16 +443,28 @@ export class Task {
 
         // Examine recurrence
         if (this.recurrence) {
+            if (!addedBr) {
+                addedBr = true;
+                // post info
+                li.createEl("br");
+            }
+
             const recur = li.createSpan();
-            let style = "font-size: 0.75em; margin-right: 1em; color: var(--text-muted)";
+            let style = "font-size: 0.75em; margin-right: 0.5em; color: var(--text-muted)";
             let text = this.recurrence.toText();
 
-            recur.textContent = `+${text}`;
+            recur.textContent = ` +${text}`;
             recur.setAttribute("style", style);
         }
 
         // Finally, the section. Only add if the source path differs from this path.
         if (sourcePath) {
+            if (!addedBr) {
+                addedBr = true;
+                // post info
+                li.createEl("br");
+            }
+
             const sec = li.createSpan();
             sec.setAttribute("style", "font-size: 0.75em; color: var(--text-muted);");
 
@@ -444,7 +475,7 @@ export class Task {
             }
 
             if (fileName !== undefined) {
-                sec.append('(');
+                sec.append(' (');
                 const link = sec.createEl('a');
                 link.href = fileName;
                 link.setAttribute('data-href', fileName);
@@ -472,7 +503,6 @@ export class Task {
                 sec.append(')');
             }
         }
-
 
         // Set these to be compatible with stock obsidian lists:
         li.setAttr('data-task', this.originalStatusCharacter.trim()); // Trim to ensure empty attribute for space. Same way as obsidian.

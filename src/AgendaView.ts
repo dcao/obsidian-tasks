@@ -24,6 +24,7 @@ export class AgendaView extends ItemView {
         di: any,
     ): Promise<void> {
         // if we clicked on an event, don't do anything
+        console.log("we openin");
         if (!(di.jsEvent.path.find((f: any) => f.className === "ec-event"))) {
             const { workspace } = this.app;
             const m = window.moment(di.date);

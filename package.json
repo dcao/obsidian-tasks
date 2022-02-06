@@ -20,18 +20,17 @@
   "author": "Martin Schenck",
   "license": "MIT",
   "devDependencies": {
-    "@codemirror/rangeset": "^0.19.0",
-    "@codemirror/state": "^0.19.0",
-    "@codemirror/view": "^0.19.0",
     "@codemirror/commands": "^0.19.0",
     "@codemirror/fold": "0.19.0",
     "@codemirror/history": "^0.19.0",
     "@codemirror/language": "^0.19.0",
     "@codemirror/matchbrackets": "^0.19.0",
     "@codemirror/panel": "^0.19.0",
+    "@codemirror/rangeset": "^0.19.0",
     "@codemirror/search": "^0.19.0",
+    "@codemirror/state": "^0.19.0",
     "@codemirror/stream-parser": "^0.19.0",
-
+    "@codemirror/view": "^0.19.0",
     "@event-calendar/core": "^0.2.0",
     "@event-calendar/day-grid": "^0.2.0",
     "@event-calendar/list": "^0.2.0",
@@ -67,6 +66,7 @@
   "dependencies": {
     "chrono-node": "^2.2.6",
     "obsidian-daily-notes-interface": "^0.9.4",
-    "rrule": "^2.6.8"
+    "rrule": "^2.6.8",
+    "sherlockjs": "^1.4.2"
   }
 }

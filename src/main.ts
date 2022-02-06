@@ -12,6 +12,7 @@ import { SettingsTab } from './SettingsTab';
 import { VIEW_TYPE_AGENDA, AgendaView } from 'AgendaView';
 import type { Task } from 'Task';
 import type { Moment } from 'moment';
+import DateSuggest from 'DateSuggest';
 
 export default class TasksPlugin extends Plugin {
     private cache: Cache | undefined;
@@ -43,6 +44,7 @@ export default class TasksPlugin extends Plugin {
 
         this.registerView(VIEW_TYPE_AGENDA, (leaf) => (this.agendaView = new AgendaView(leaf, this.events, this.cache!.getTasks())));
         this.initFileListener();
+        this.registerEditorSuggest(new DateSuggest(this.app));
 
         if (this.app.workspace.layoutReady) {
             this.initLeaf();
