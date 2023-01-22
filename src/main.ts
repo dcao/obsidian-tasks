@@ -13,6 +13,7 @@ import { VIEW_TYPE_AGENDA, AgendaView } from 'AgendaView';
 import type { Task } from 'Task';
 import type { Moment } from 'moment';
 import DateSuggest from 'DateSuggest';
+import { newLivePreviewExtension } from 'LivePreviewExtension';
 
 export default class TasksPlugin extends Plugin {
     private cache: Cache | undefined;
@@ -37,6 +38,8 @@ export default class TasksPlugin extends Plugin {
             vault: this.app.vault,
             events: this.events,
         });
+
+        this.registerEditorExtension(newLivePreviewExtension());
 
         new InlineRenderer({ plugin: this });
         new QueryRenderer({ plugin: this, events: this.events });
@@ -90,7 +93,7 @@ export default class TasksPlugin extends Plugin {
                 agenda[date.format("YYYY-MM-DD")] = res;
             }
 
-            this.app.vault.adapter.write(".agenda.json", JSON.stringify(agenda));
+            this.app.vault.adapter.write("agenda.json", JSON.stringify(agenda));
         });
     }
 

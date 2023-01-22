@@ -291,7 +291,7 @@ export class Task {
         parentUlElement: HTMLElement;
         /** The nth item in this list (including non-tasks). */
         listIndex: number;
-        sourcePath: string;
+        sourcePath: string | null;
     }): Promise<HTMLLIElement> {
         const li: HTMLLIElement = parentUlElement.createEl('li');
         li.addClasses(['task-list-item', 'plugin-tasks-list-item']);
@@ -366,7 +366,6 @@ export class Task {
             let text = " d. ";
             // Check if this is due today.
             if (this.dueStart.isSame(now, "day")) {
-                // In this case, we report time.
                 if (this.status == Status.Todo) {
                     style += "color: var(--text-error);"
                 } else {
@@ -379,6 +378,8 @@ export class Task {
                     text += this.dueStart.format("h:mma");
                     text += "–";
                     text += this.dueStop.format("h:mma");
+                } else if (this.dueStart.format("h:mma") != "12:00am") {
+                    text += this.dueStart.format("h:mma");
                 } else {
                     text += "0d";
                 }
@@ -391,6 +392,18 @@ export class Task {
                     style += "color: var(--text-error);";
                 } else {
                     style += "color: var(--text-muted);";
+                }
+
+                // If there's a stop period, we interpret 12am start.
+                // Otherwise, it's just due today generically.
+                if (this.dueStop) {
+                    text += " ";
+                    text += this.dueStart.format("h:mma");
+                    text += "–";
+                    text += this.dueStop.format("h:mma");
+                } else if (this.dueStart.format("h:mma") != "12:00am") {
+                    text += " ";
+                    text += this.dueStart.format("h:mma");
                 }
             }
             due.textContent = text;
@@ -410,7 +423,6 @@ export class Task {
             let text = " s. ";
             // Check if this is due today.
             if (this.schedStart.isSame(now, "day")) {
-                // In this case, we report time.
                 if (this.status == Status.Todo) {
                     style += "color: var(--orange);"
                 } else {
@@ -423,6 +435,8 @@ export class Task {
                     text += this.schedStart.format("h:mma");
                     text += "–";
                     text += this.schedStop.format("h:mma");
+                } else if (this.schedStart.format("h:mma") != "12:00am") {
+                    text += this.schedStart.format("h:mma");
                 } else {
                     text += "0d";
                 }
@@ -435,6 +449,18 @@ export class Task {
                     style += "color: var(--orange);"
                 } else {
                     style += "color: var(--text-muted);";
+                }
+
+                // If there's a stop period, we interpret 12am start.
+                // Otherwise, it's just sched today generically.
+                if (this.schedStop) {
+                    text += " ";
+                    text += this.schedStart.format("h:mma");
+                    text += "–";
+                    text += this.schedStop.format("h:mma");
+                } else if (this.schedStart.format("h:mma") != "12:00am") {
+                    text += " ";
+                    text += this.schedStart.format("h:mma");
                 }
             }
             sched.textContent = text;

@@ -2,7 +2,7 @@ import type { Moment } from 'moment';
 import { RRule } from 'rrule';
 
 export class Recurrence {
-    private readonly rrule: RRule;
+    readonly rrule: RRule;
 
     private readonly schedStart: Moment | null;
     private readonly schedStop: Moment | null;
@@ -46,6 +46,46 @@ export class Recurrence {
         this.schedStop = schedStop;
         this.dueStart = dueStart;
         this.dueStop = dueStop;
+    }
+
+    public static fromDates({
+        rrule,
+        schedStart,
+        schedStop,
+        dueStart,
+        dueStop,
+    }: {
+        rrule: RRule;
+        schedStart: Moment | null;
+        schedStop: Moment | null;
+        dueStart: Moment | null;
+        dueStop: Moment | null;
+    }): Recurrence {
+        let referenceDate: Moment | null = null;
+        // Clone the moment objects.
+        if (dueStart) {
+            referenceDate = window.moment(dueStart);
+        } else if (schedStart) {
+            referenceDate = window.moment(schedStart);
+        }
+
+        if (referenceDate !== null) {
+            let options = rrule.options;
+            options.dtstart = window
+                .moment(referenceDate)
+                .utc(true)
+                .toDate();
+            rrule = new RRule(options);
+        }
+
+        return new Recurrence({
+            rrule,
+            referenceDate,
+            schedStart,
+            schedStop,
+            dueStart,
+            dueStop,
+        });
     }
 
     public static fromText({

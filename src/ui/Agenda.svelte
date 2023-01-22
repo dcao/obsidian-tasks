@@ -10,6 +10,7 @@
     import DayGrid from '@event-calendar/day-grid';
     import List from '@event-calendar/list';
     import moment from 'moment';
+import { Recurrence } from 'Recurrence';
 
     export let events: Events;
     export let tasks: Task[];
@@ -26,6 +27,155 @@
 
     // Calendar stuff
     let plugins = [TimeGrid, DayGrid, List];
+    let getEnd = (start, stop) => {
+        // console.log(start);
+        if (stop) {
+            if (stop.diff(stop.clone().startOf('day'), 'minutes') == 0) {
+                // It's a plain date. Set to 11:59:59p of day
+                let res = stop.clone();
+                res.set({'hour': 23, 'minute': 59, 'second': 59});
+
+                return res;
+            } else {
+                return stop;
+            }
+        } else {
+            return start!.clone().add(1, 'hour');
+        }
+
+        // const end = t.schedStop
+        //     ? t.schedStop
+        //     : t.schedStart!.clone().add(1, 'hour');
+    };
+
+    let getTasks = (tasks) => {
+        return tasks
+            .filter((t) => t.dueStart !== null || t.schedStart !== null)
+            .flatMap((t) => {
+                let list = [];
+
+                if (t.schedStart) {
+                    // console.log("get end from start");
+                    // console.log(t);
+                    const end = getEnd(t.schedStart, t.schedStop);
+                    list.push({
+                        start: t.schedStart?.toDate(),
+                        end: end.toDate(),
+                        title:
+                            t.precedingHeader !== null
+                                ? `${t.description} (${t.path} > ${t.precedingHeader})`
+                                : `${t.description} (${t.path})`,
+                        backgroundColor:
+                            t.status === Status.Done
+                                ? 'gray'
+                                : '#2b5b80',
+                        extendedProps: {
+                            path: t.path,
+                            line: t.sectionStart,
+                        },
+                    });
+                }
+
+                if (t.dueStart) {
+                    // console.log("get end from due");
+                    // console.log(t);
+                    const end = getEnd(t.dueStart, t.dueStop);
+                    list.push({
+                        start: t.dueStart?.toDate(),
+                        end: end.toDate(),
+                        title:
+                            t.precedingHeader !== null
+                                ? `${t.description} (${t.path} > ${t.precedingHeader})`
+                                : `${t.description} (${t.path})`,
+                        backgroundColor:
+                            t.status === Status.Done
+                                ? 'gray'
+                                : '#705023',
+                        extendedProps: {
+                            path: t.path,
+                            line: t.sectionStart,
+                        },
+                    });
+                }
+
+                // Then add a few recurrences down here
+                if (t.recurrence && t.status == Status.Todo) {
+                    // We basically build a recurrence and repeatedly call next on it.
+                    let re_cur = t.recurrence;
+
+                    // Add seven recurrences. Why seven? Why not :^)
+                    // TODO: In the future, # of recurrences can be adaptive
+                    for (let i = 0; i < 3; i++) {
+                        if (re_cur.next() == null) {
+                            break;
+                        }
+
+                        let x = re_cur.next()!;
+                        // Set the next recurrence
+                        re_cur = Recurrence.fromDates({
+                            rrule: t.recurrence.rrule,
+                            schedStart: x.schedStart,
+                            schedStop: x.schedStop,
+                            dueStart: x.dueStart,
+                            dueStop: x.dueStop,
+                        });
+
+                        // Add the task
+                        if (x.schedStart) {
+                            // console.log("get end from sched recur");
+                            // console.log(t);
+                            const end = getEnd(x.schedStart, x.schedStop);
+                            list.push({
+                                start: x.schedStart?.toDate(),
+                                end: end.toDate(),
+                                title:
+                                    t.precedingHeader !== null
+                                        ? `${t.description} (${t.path} > ${t.precedingHeader})`
+                                        : `${t.description} (${t.path})`,
+                                // A hack to change the text color and the bg color lmao
+                                backgroundColor: 'var(--hl2);color:var(--text-normal)',
+                                extendedProps: {
+                                    path: t.path,
+                                    line: t.sectionStart,
+                                },
+                            });
+                        }
+
+                        if (x.dueStart) {
+                            const end = getEnd(x.dueStart, x.dueStop);
+                            list.push({
+                                start: x.dueStart?.toDate(),
+                                end: end.toDate(),
+                                title:
+                                    t.precedingHeader !== null
+                                        ? `${t.description} (${t.path} > ${t.precedingHeader})`
+                                        : `${t.description} (${t.path})`,
+                                backgroundColor: 'gray',
+                                extendedProps: {
+                                    path: t.path,
+                                    line: t.sectionStart,
+                                },
+                            });
+                        }
+                    }
+                }
+
+                return list;
+            })
+            .concat([
+                {
+                    start: new Date(),
+                    end: moment().add(1, 'minute').toDate(),
+                    title: 'Current time',
+                    backgroundColor: 'red',
+                    extendedProps: {
+                        path: "",
+                        line: 0,
+                    },
+                },
+            ]);
+    };
+
     $: options = {
         view: 'timeGridDay',
         headerToolbar: {
@@ -57,69 +207,7 @@
                 timeStyle: 'short',
             }).format(ei.event.end)}</div>`,
         dayHeaderFormat: { weekday: 'short', day: 'numeric' },
-        events: tasks
-            .filter((t) => t.dueStart !== null || t.schedStart !== null)
-            .flatMap((t) => {
-                let list = [];
-
-                if (t.schedStart) {
-                    const end = t.schedStop
-                        ? t.schedStop
-                        : t.schedStart!.clone().add(1, 'hour');
-                    list.push({
-                        start: t.schedStart?.toDate(),
-                        end: end.toDate(),
-                        title:
-                            t.precedingHeader !== null
-                                ? `${t.description} (${t.path} > ${t.precedingHeader})`
-                                : `${t.description} (${t.path})`,
-                        backgroundColor:
-                            t.status === Status.Done
-                                ? 'gray'
-                                : 'var(--interactive-accent-hover)',
-                        extendedProps: {
-                            path: t.path,
-                            line: t.sectionStart,
-                        },
-                    });
-                }
-
-                if (t.dueStart) {
-                    const end = t.dueStop
-                        ? t.dueStop
-                        : t.dueStart!.clone().add(1, 'hour');
-                    list.push({
-                        start: t.dueStart?.toDate(),
-                        end: end.toDate(),
-                        title:
-                            t.precedingHeader !== null
-                                ? `${t.description} (${t.path} > ${t.precedingHeader})`
-                                : `${t.description} (${t.path})`,
-                        backgroundColor:
-                            t.status === Status.Done
-                                ? 'gray'
-                                : 'var(--interactive-accent)',
-                        extendedProps: {
-                            path: t.path,
-                            line: t.sectionStart,
-                        },
-                    });
-                }
-
-                return list;
-            })
-            .concat([
-                {
-                    start: new Date(),
-                    end: moment().add(1, 'minute').toDate(),
-                    title: 'Current time',
-                    backgroundColor: 'red',
-                    extendedProps: {
-                        path: "",
-                        line: 0,
-                    },
-                },
-            ]),
+        events: getTasks(tasks),
     };
 </script>
 

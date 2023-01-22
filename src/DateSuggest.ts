@@ -152,7 +152,7 @@ export default class DateSuggest extends EditorSuggest<IDateCompletion> {
             startPos
         );
 
-        if (precedingChar && /[`a-zA-Z0-9]/.test(precedingChar)) {
+        if (precedingChar && /[`a-zA-Z0-9\[\]]/.test(precedingChar)) {
             return null;
         }
 

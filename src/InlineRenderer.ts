@@ -88,6 +88,7 @@ export class InlineRenderer {
             const listIndex: number = Number.parseInt(dataLine, 10);
             const taskElement = await task.toLi({
                 parentUlElement: element,
+                sourcePath: null,
                 listIndex,
             });
 
