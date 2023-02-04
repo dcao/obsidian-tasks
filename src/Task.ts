@@ -339,6 +339,16 @@ export class Task {
         let cookies = wrapper.createEl("div");
         cookies.setAttribute("style", "margin-left: auto;");
 
+        // Examine recurrence
+        if (this.recurrence) {
+            const recur = cookies.createSpan();
+            let style = "font-size: 0.75em; margin-right: 0.5em; color: var(--text-muted)";
+            let text = this.recurrence.toText();
+
+            recur.textContent = `+${text}`;
+            recur.setAttribute("style", style);
+        }
+
         // The section. Only add if the source path differs from this path.
         if (sourcePath) {
             const sec = cookies.createSpan();
@@ -380,25 +390,15 @@ export class Task {
             }
         }
 
-        // Examine recurrence
-        if (this.recurrence) {
-            const recur = cookies.createSpan();
-            let style = "font-size: 0.75em; margin-right: 0.5em; color: var(--text-muted)";
-            let text = this.recurrence.toText();
-
-            recur.textContent = `+${text}`;
-            recur.setAttribute("style", style);
-        }
-
         // Next, examine scheduled time
         if (this.schedStart) {
-            const sched = cookies.createSpan();
-            let style = "margin-right: 0.5em; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--color-cyan);";
+            const sched = content.createSpan();
+            let style = "margin-right: 0.5em; white-space: nowrap; background-color: var(--background-primary-alt); padding: 0 4px; border: 1px solid var(--background-modifier-hover);";
             let text = "";
             // Check if this is due today.
             if (this.schedStart.isSame(now, "day")) {
                 if (this.status == Status.Todo) {
-                    style += "color: var(--color-cyan);"
+                    style += "color: var(--color-cyan); border: 1px solid var(--color-cyan);"
                 } else {
                     style += "color: var(--text-muted);"
                 }
@@ -420,9 +420,9 @@ export class Task {
                 let diff = stad.diff(nowd, "days");
                 text += `${diff}d`;
                 if (diff < 0 && this.status == Status.Todo) {
-                    style += "color: var(--color-cyan);"
+                    style += "color: var(--color-cyan); border: 1px solid var(--color-cyan);"
                 } else {
-                    style += "color: var(--text-muted);";
+                    style += "color: var(--text-muted);"
                 }
 
                 // If there's a stop period, we interpret 12am start.
@@ -439,17 +439,18 @@ export class Task {
             }
             sched.textContent = text;
             sched.setAttribute("style", style);
+            content.prepend(sched);
         }
 
         // examine deadline time
         if (this.dueStart) {
-            const due = cookies.createSpan();
-            let style = "margin-right: 0.5em; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--color-red);";
+            const due = content.createSpan();
+            let style = "margin-right: 0.5em; white-space: nowrap; background-color: var(--background-modifier-error); padding: 0 4px; border: 1px solid var(--background-modifier-hover);";
             let text = "";
             // Check if this is due today.
             if (this.dueStart.isSame(now, "day")) {
                 if (this.status == Status.Todo) {
-                    style += "color: var(--color-red);"
+                    style += "border: 1px solid var(--color-red); color: var(--color-red);"
                 } else {
                     style += "color: var(--text-muted);"
                 }
@@ -471,9 +472,9 @@ export class Task {
                 let diff = stad.diff(nowd, "days");
                 text += `${diff}d`;
                 if (diff < 0 && this.status == Status.Todo) {
-                    style += "color: var(--color-red);";
+                    style += "border: 1px solid var(--color-red); color: var(--color-red);"
                 } else {
-                    style += "color: var(--text-muted);";
+                    style += "color: var(--text-muted);"
                 }
 
                 // If there's a stop period, we interpret 12am start.
@@ -490,6 +491,8 @@ export class Task {
             }
             due.textContent = text;
             due.setAttribute("style", style);
+
+            content.prepend(due);
         }
 
         const checkbox = outer.createEl('input');
