@@ -302,129 +302,103 @@ export class Task {
             taskAsString = taskAsString.replace(globalFilter, '').trim();
         }
 
+        let outer = li.createEl("div");
+        outer.setAttribute("style", "display: flex; align-items: baseline;");
+
+        let wrapper = outer.createEl("div");
+        wrapper.setAttribute("style", "flex-grow: 1; display: flex; align-items: center; flex-wrap: wrap;");
+
+        let content = wrapper.createSpan();
+        content.setAttribute("style", "flex-grow: 1;");
+
         await MarkdownRenderer.renderMarkdown(
-            " " + taskAsString,
-            li,
+            taskAsString,
+            content,
             this.path,
             null as unknown as Component,
         );
 
         // Unwrap the p-tag that was created by the MarkdownRenderer:
-        const pElement = li.querySelector('p');
+        const pElement = content.querySelector('p');
         if (pElement !== null) {
             while (pElement.firstChild) {
-                li.insertBefore(pElement.firstChild, pElement);
+                content.insertBefore(pElement.firstChild, pElement);
             }
             pElement.remove();
         }
 
         // Remove an empty trailing p-tag that the MarkdownRenderer appends when there is a block link:
-        li.findAll('p').forEach((pElement) => {
+        content.findAll('p').forEach((pElement) => {
             if (!pElement.hasChildNodes()) {
                 pElement.remove();
             }
         });
 
-        const checkbox = li.createEl('input');
-        checkbox.addClass('task-list-item-checkbox');
-        checkbox.type = 'checkbox';
-        if (this.status !== Status.Todo) {
-            checkbox.checked = true;
-            li.addClass('is-checked');
-        }
-        checkbox.onClickEvent((event: MouseEvent) => {
-            event.preventDefault();
-            // It is required to stop propagation so that obsidian won't write the file with the
-            // checkbox (un)checked. Obsidian would write after us and overwrite our change.
-            event.stopPropagation();
-
-            // Should be re-rendered as enabled after update in file.
-            checkbox.disabled = true;
-            const toggledTasks = this.toggle();
-            replaceTaskWithTasks({
-                originalTask: this,
-                newTasks: toggledTasks,
-            });
-        });
-
-        li.prepend(checkbox);
-
-        let addedBr = false;
-
         const now = window.moment(Date.now());
 
-        // First, examine deadline time
-        if (this.dueStart) {
-            if (!addedBr) {
-                addedBr = true;
-                // post info
-                li.createEl("br");
+        let cookies = wrapper.createEl("div");
+        cookies.setAttribute("style", "margin-left: auto;");
+
+        // The section. Only add if the source path differs from this path.
+        if (sourcePath) {
+            const sec = cookies.createSpan();
+            sec.setAttribute("style", "font-size: 0.85em; background-color: var(--background-primary-alt); padding: 3px; margin-left: 2px; white-space: nowrap; margin-right: 0.5em;");
+
+            let fileName: string | undefined;
+            const fileNameMatch = this.path.match(/([^/]+)\.md$/);
+            if (fileNameMatch !== null) {
+                fileName = fileNameMatch[1];
             }
 
-            const due = li.createSpan();
-            let style = "font-size: 0.75em;margin-right: 0.5em;";
-            let text = " d. ";
-            // Check if this is due today.
-            if (this.dueStart.isSame(now, "day")) {
-                if (this.status == Status.Todo) {
-                    style += "color: var(--text-error);"
-                } else {
-                    style += "color: var(--text-muted);"
+            if (fileName !== undefined) {
+                const link = sec.createEl('a');
+                link.href = fileName;
+                link.setAttribute('data-href', fileName);
+                link.rel = 'noopener';
+                link.target = '_blank';
+                link.addClass('internal-link');
+
+                let dendronName = (path: string) => path.split(".").last()!;
+                // let linkText = fileName;
+                let linkText = dendronName(fileName);
+                if (this.precedingHeader !== null) {
+                    link.href = link.href + '#' + this.precedingHeader;
+                    link.setAttribute(
+                        'data-href',
+                        link.getAttribute('data-href') +
+                            '#' +
+                            this.precedingHeader,
+                    );
+
+                    // Otherwise, this wouldn't provide additinoal information and only take up space.
+                    // if (this.precedingHeader !== fileName) {
+                    //     linkText = linkText + ' > ' + this.precedingHeader;
+                    // }
                 }
 
-                // If there's a stop period, we interpret 12am start.
-                // Otherwise, it's just due today generically.
-                if (this.dueStop) {
-                    text += this.dueStart.format("h:mma");
-                    text += "–";
-                    text += this.dueStop.format("h:mma");
-                } else if (this.dueStart.format("h:mma") != "12:00am") {
-                    text += this.dueStart.format("h:mma");
-                } else {
-                    text += "0d";
-                }
-            } else {
-                let nowd = now.startOf("day");
-                let stad = this.dueStart.clone().startOf("day");
-                let diff = stad.diff(nowd, "days");
-                text += `${diff}d`;
-                if (diff < 0 && this.status == Status.Todo) {
-                    style += "color: var(--text-error);";
-                } else {
-                    style += "color: var(--text-muted);";
-                }
-
-                // If there's a stop period, we interpret 12am start.
-                // Otherwise, it's just due today generically.
-                if (this.dueStop) {
-                    text += " ";
-                    text += this.dueStart.format("h:mma");
-                    text += "–";
-                    text += this.dueStop.format("h:mma");
-                } else if (this.dueStart.format("h:mma") != "12:00am") {
-                    text += " ";
-                    text += this.dueStart.format("h:mma");
-                }
+                link.setText(linkText);
             }
-            due.textContent = text;
-            due.setAttribute("style", style);
+        }
+
+        // Examine recurrence
+        if (this.recurrence) {
+            const recur = cookies.createSpan();
+            let style = "font-size: 0.75em; margin-right: 0.5em; color: var(--text-muted)";
+            let text = this.recurrence.toText();
+
+            recur.textContent = `+${text}`;
+            recur.setAttribute("style", style);
         }
 
         // Next, examine scheduled time
         if (this.schedStart) {
-            if (!addedBr) {
-                addedBr = true;
-                // post info
-                li.createEl("br");
-            }
-
-            const sched = li.createSpan();
-            let style = "font-size: 0.75em;margin-right:0.5em;";
-            let text = " s. ";
+            const sched = cookies.createSpan();
+            let style = "margin-right: 0.5em; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--color-cyan);";
+            let text = "";
             // Check if this is due today.
             if (this.schedStart.isSame(now, "day")) {
                 if (this.status == Status.Todo) {
-                    style += "color: var(--orange);"
+                    style += "color: var(--color-cyan);"
                 } else {
                     style += "color: var(--text-muted);"
                 }
@@ -446,7 +420,7 @@ export class Task {
                 let diff = stad.diff(nowd, "days");
                 text += `${diff}d`;
                 if (diff < 0 && this.status == Status.Todo) {
-                    style += "color: var(--orange);"
+                    style += "color: var(--color-cyan);"
                 } else {
                     style += "color: var(--text-muted);";
                 }
@@ -467,68 +441,81 @@ export class Task {
             sched.setAttribute("style", style);
         }
 
-        // Examine recurrence
-        if (this.recurrence) {
-            if (!addedBr) {
-                addedBr = true;
-                // post info
-                li.createEl("br");
-            }
-
-            const recur = li.createSpan();
-            let style = "font-size: 0.75em; margin-right: 0.5em; color: var(--text-muted)";
-            let text = this.recurrence.toText();
-
-            recur.textContent = ` +${text}`;
-            recur.setAttribute("style", style);
-        }
-
-        // Finally, the section. Only add if the source path differs from this path.
-        if (sourcePath) {
-            if (!addedBr) {
-                addedBr = true;
-                // post info
-                li.createEl("br");
-            }
-
-            const sec = li.createSpan();
-            sec.setAttribute("style", "font-size: 0.75em; color: var(--text-muted);");
-
-            let fileName: string | undefined;
-            const fileNameMatch = this.path.match(/([^/]+)\.md$/);
-            if (fileNameMatch !== null) {
-                fileName = fileNameMatch[1];
-            }
-
-            if (fileName !== undefined) {
-                sec.append(' (');
-                const link = sec.createEl('a');
-                link.href = fileName;
-                link.setAttribute('data-href', fileName);
-                link.rel = 'noopener';
-                link.target = '_blank';
-                link.addClass('internal-link');
-
-                let linkText = fileName;
-                if (this.precedingHeader !== null) {
-                    link.href = link.href + '#' + this.precedingHeader;
-                    link.setAttribute(
-                        'data-href',
-                        link.getAttribute('data-href') +
-                            '#' +
-                            this.precedingHeader,
-                    );
-
-                    // Otherwise, this wouldn't provide additinoal information and only take up space.
-                    if (this.precedingHeader !== fileName) {
-                        linkText = linkText + ' > ' + this.precedingHeader;
-                    }
+        // examine deadline time
+        if (this.dueStart) {
+            const due = cookies.createSpan();
+            let style = "margin-right: 0.5em; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--color-red);";
+            let text = "";
+            // Check if this is due today.
+            if (this.dueStart.isSame(now, "day")) {
+                if (this.status == Status.Todo) {
+                    style += "color: var(--color-red);"
+                } else {
+                    style += "color: var(--text-muted);"
                 }
 
-                link.setText(linkText);
-                sec.append(')');
+                // If there's a stop period, we interpret 12am start.
+                // Otherwise, it's just due today generically.
+                if (this.dueStop) {
+                    text += this.dueStart.format("h:mma");
+                    text += "–";
+                    text += this.dueStop.format("h:mma");
+                } else if (this.dueStart.format("h:mma") != "12:00am") {
+                    text += this.dueStart.format("h:mma");
+                } else {
+                    text += "0d";
+                }
+            } else {
+                let nowd = now.startOf("day");
+                let stad = this.dueStart.clone().startOf("day");
+                let diff = stad.diff(nowd, "days");
+                text += `${diff}d`;
+                if (diff < 0 && this.status == Status.Todo) {
+                    style += "color: var(--color-red);";
+                } else {
+                    style += "color: var(--text-muted);";
+                }
+
+                // If there's a stop period, we interpret 12am start.
+                // Otherwise, it's just due today generically.
+                if (this.dueStop) {
+                    text += " ";
+                    text += this.dueStart.format("h:mma");
+                    text += "–";
+                    text += this.dueStop.format("h:mma");
+                } else if (this.dueStart.format("h:mma") != "12:00am") {
+                    text += " ";
+                    text += this.dueStart.format("h:mma");
+                }
             }
+            due.textContent = text;
+            due.setAttribute("style", style);
         }
+
+        const checkbox = outer.createEl('input');
+        checkbox.addClass('task-list-item-checkbox');
+        checkbox.setAttribute("style", "margin-right: 0.6em; top: 0.1em;");
+        checkbox.type = 'checkbox';
+        if (this.status !== Status.Todo) {
+            checkbox.checked = true;
+            li.addClass('is-checked');
+        }
+        checkbox.onClickEvent((event: MouseEvent) => {
+            event.preventDefault();
+            // It is required to stop propagation so that obsidian won't write the file with the
+            // checkbox (un)checked. Obsidian would write after us and overwrite our change.
+            event.stopPropagation();
+
+            // Should be re-rendered as enabled after update in file.
+            checkbox.disabled = true;
+            const toggledTasks = this.toggle();
+            replaceTaskWithTasks({
+                originalTask: this,
+                newTasks: toggledTasks,
+            });
+        });
+
+        outer.prepend(checkbox);
 
         // Set these to be compatible with stock obsidian lists:
         li.setAttr('data-task', this.originalStatusCharacter.trim()); // Trim to ensure empty attribute for space. Same way as obsidian.
