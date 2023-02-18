@@ -362,15 +362,22 @@ export class Task {
 
             if (fileName !== undefined) {
                 const link = sec.createEl('a');
-                link.href = fileName;
-                link.setAttribute('data-href', fileName);
+                link.href = this.path;
+                link.setAttribute('data-href', this.path);
                 link.rel = 'noopener';
                 link.target = '_blank';
                 link.addClass('internal-link');
 
                 let dendronName = (path: string) => path.split(".").last()!;
                 // let linkText = fileName;
-                let linkText = dendronName(fileName);
+                let linkText;
+                // special-casing daily notes. janky but idc
+                if ("d" === this.path.substring(0, this.path.lastIndexOf("/"))) {
+                    linkText = "(daily)";
+                } else {
+                    linkText = dendronName(fileName);
+                }
+
                 if (this.precedingHeader !== null) {
                     link.href = link.href + '#' + this.precedingHeader;
                     link.setAttribute(
@@ -393,12 +400,12 @@ export class Task {
         // Next, examine scheduled time
         if (this.schedStart) {
             const sched = content.createSpan();
-            let style = "margin-right: 0.5em; white-space: nowrap; background-color: var(--background-primary-alt); padding: 0 4px; border: 1px solid var(--background-modifier-hover);";
+            let style = "margin-right: 0.5em; white-space: nowrap; background-color: var(--background-primary-alt); padding: 0 4px; border: 1px solid var(--background-modifier-hover); font-size: 0.9em;";
             let text = "";
             // Check if this is due today.
             if (this.schedStart.isSame(now, "day")) {
                 if (this.status == Status.Todo) {
-                    style += "color: var(--color-cyan); border: 1px solid var(--color-cyan);"
+                    style += "color: var(--text-normal); border: 1px solid var(--background-modifier-border-hover)"
                 } else {
                     style += "color: var(--text-muted);"
                 }
@@ -420,7 +427,7 @@ export class Task {
                 let diff = stad.diff(nowd, "days");
                 text += `${diff}d`;
                 if (diff < 0 && this.status == Status.Todo) {
-                    style += "color: var(--color-cyan); border: 1px solid var(--color-cyan);"
+                    style += "color: var(--color-orange); border: 1px solid var(--color-orange);"
                 } else {
                     style += "color: var(--text-muted);"
                 }
@@ -445,7 +452,7 @@ export class Task {
         // examine deadline time
         if (this.dueStart) {
             const due = content.createSpan();
-            let style = "margin-right: 0.5em; white-space: nowrap; background-color: var(--background-modifier-error); padding: 0 4px; border: 1px solid var(--background-modifier-hover);";
+            let style = "margin-right: 0.5em; white-space: nowrap; background-color: var(--background-modifier-error); padding: 0 4px; border: 1px solid var(--background-modifier-hover); font-size: 0.9em;";
             let text = "";
             // Check if this is due today.
             if (this.dueStart.isSame(now, "day")) {
@@ -524,6 +531,7 @@ export class Task {
         li.setAttr('data-task', this.originalStatusCharacter.trim()); // Trim to ensure empty attribute for space. Same way as obsidian.
         li.setAttr('data-line', listIndex);
         checkbox.setAttr('data-line', listIndex);
+
 
         return li;
     }

@@ -171,47 +171,11 @@ class QueryRenderChild extends MarkdownRenderChild {
         for (let i = 0; i < tasksCount; i++) {
             const task = tasksSortedLimited[i];
 
-            let fileName: string | undefined;
-            const fileNameMatch = task.path.match(/([^/]+)\.md$/);
-            if (fileNameMatch !== null) {
-                fileName = fileNameMatch[1];
-            }
-
             const listItem = await task.toLi({
                 parentUlElement: taskList,
                 listIndex: i,
                 sourcePath: this.sourcePath,
             });
-
-            // const postInfo = listItem.createSpan();
-            // if (fileName !== undefined) {
-            //     postInfo.append(' (');
-            //     const link = postInfo.createEl('a');
-            //     link.href = fileName;
-            //     link.setAttribute('data-href', fileName);
-            //     link.rel = 'noopener';
-            //     link.target = '_blank';
-            //     link.addClass('internal-link');
-
-            //     let linkText = fileName;
-            //     if (task.precedingHeader !== null) {
-            //         link.href = link.href + '#' + task.precedingHeader;
-            //         link.setAttribute(
-            //             'data-href',
-            //             link.getAttribute('data-href') +
-            //                 '#' +
-            //                 task.precedingHeader,
-            //         );
-
-            //         // Otherwise, this wouldn't provide additinoal information and only take up space.
-            //         if (task.precedingHeader !== fileName) {
-            //             linkText = linkText + ' > ' + task.precedingHeader;
-            //         }
-            //     }
-
-            //     link.setText(linkText);
-            //     postInfo.append(')');
-            // }
 
             taskList.appendChild(listItem);
         }
